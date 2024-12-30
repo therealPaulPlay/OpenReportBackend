@@ -7,6 +7,9 @@ require('dotenv').config(); // Load environment variables
 
 // Router Imports
 const accountRouter = require("./JS/accountRouter.js");
+const userDatabaseRouter = require("./JS/userDatabaseRouter.js");
+const appRouter = require("./JS/appRouter.js");
+const moderatorRouter = require("./JS/moderatorRouter.js");
 
 // Function imports
 const { connectDB } = require("./JS/connectDB.js");
@@ -29,6 +32,9 @@ connectDB();
 
 // Routers
 app.use("/account", accountRouter)
+app.use("/user-database", userDatabaseRouter);
+app.use("/app", appRouter);
+app.use("/moderator", moderatorRouter);
 
 // Start the server ----------------------------------------------------------------------------------------------------------------------------------
 app.listen(process.env.PORT, () => {

@@ -12,14 +12,13 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
     const db = getDB();
 
     let { userName, email, password } = req.body; // Include these 3 properties in the request body
-    const userIp = req.clientIp;
 
     if (!userName || !email || !password) {
         return res.status(400).json({ error: 'Username, email, and password are required.' });
     }
 
     userName = userName.trim(); // Remove whitespaces from username
-    email = email.trim(); // Remove whitespaces from email
+    email = email.trim().toLowerCase(); // Remove whitespaces from email and lowercase
 
     if (userName.length < 4) {
         return res.status(400).json({ error: "Username is too short." });
@@ -48,7 +47,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
         // Insert new user into the database
         const insertUserQuery = 'INSERT INTO accounts (user_name, email, password, created_at) VALUES (?, ?, ?, ?, ?)';
         const newUser = await new Promise((resolve, reject) => {
-            db.query(insertUserQuery, [userName, email, hashedPassword, userIp, now], (err, results) => {
+            db.query(insertUserQuery, [userName, email, hashedPassword, now], (err, results) => {
                 if (err) return reject(err);
                 resolve(results.insertId);
             });
