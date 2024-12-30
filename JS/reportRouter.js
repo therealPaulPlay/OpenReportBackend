@@ -3,25 +3,25 @@ const { getDB } = require('./db.js');
 const { executeOnUserDatabase } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
-const { standardLimiter } = require('./rateLimiting.js');
+const { standardLimiter, manualEntryLimiter } = require('./rateLimiting.js');
 
 // Function to verify ownership or moderation and return app info
-async function verifyOwnershipOrModeration(db, userId, appId) {
+async function verifyAppOwnership(db, appId, userId) {
     const query = `
-        SELECT ua.id AS app_id, ua.creator_id
+        SELECT ua.id AS app_id, ua.creator_id, ua.app_name
         FROM users_apps AS ua
-        LEFT JOIN apps_moderators AS am ON ua.id = am.app_id
-        WHERE (ua.creator_id = ? OR am.moderator_id = ?) AND ua.id = ?;
+        LEFT JOIN apps_moderators AS am ON am.app_id = ua.id
+        WHERE ua.id = ? AND (ua.creator_id = ? OR am.user_id = ?);
     `;
     return new Promise((resolve, reject) => {
-        db.query(query, [userId, userId, appId], (err, results) => {
+        db.query(query, [appId, userId, userId], (err, results) => {
             if (err) return reject(err);
             resolve(results[0] || null);
         });
     });
 }
 
-// Function to retrieve user database connection details
+// Function to fetch user database details
 async function getUserDatabaseDetails(db, userId) {
     const query = `
         SELECT db_host, db_user_name, db_password, db_database, db_port
@@ -39,8 +39,8 @@ async function getUserDatabaseDetails(db, userId) {
 // Function to verify app by API key and fetch its details
 async function verifyAppByKey(db, key) {
     const query = `
-        SELECT ua.id AS app_id, ua.creator_id, ua.warnlist_threshold, ua.blacklist_threshold, 
-               u.report_limit, ua.monthly_report_count, ua.name AS app_name
+        SELECT ua.id AS app_id, ua.app_name, ua.creator_id, ua.warnlist_threshold, ua.blacklist_threshold, 
+               u.report_limit, ua.monthly_report_count
         FROM users_apps AS ua
         INNER JOIN users AS u ON ua.creator_id = u.id
         WHERE ua.api_key = ?;
@@ -53,6 +53,7 @@ async function verifyAppByKey(db, key) {
     });
 }
 
+// Submit a report !TODO captcha
 reportRouter.post('/submit', standardLimiter, async (req, res) => {
     const { key, referenceId, type, reason, notes, link } = req.body;
     const reporterIp = req.clientIp;
@@ -74,10 +75,10 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
             return res.status(429).json({ error: 'Monthly report limit exceeded for this app.' });
         }
 
-        const { app_name: appName, creator_id: creatorId, warnlist_threshold, blacklist_threshold } = app;
+        const { app_id, app_name, creator_id, warnlist_threshold, blacklist_threshold, report_limit, monthly_report_count } = app;
 
         // Fetch user database connection details
-        const dbDetails = await getUserDatabaseDetails(db, creatorId);
+        const dbDetails = await getUserDatabaseDetails(db, creator_id);
         if (!dbDetails) {
             return res.status(500).json({ error: 'User database not configured.' });
         }
@@ -85,7 +86,7 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
         // Prevent duplicate reports by IP for the same type and referenceId
         const duplicateCheckQuery = `
             SELECT COUNT(*) AS count
-            FROM \`${appName}_reports\`
+            FROM \`${app_name}_reports\`
             WHERE type = ? AND referenceId = ? AND reporterIp = ?;
         `;
         const duplicateCheck = await executeOnUserDatabase(
@@ -95,12 +96,12 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
         );
 
         if (duplicateCheck.count > 0) {
-            return res.status(409).json({ error: 'Duplicate report detected.' });
+            return res.status(409).json({ error: 'Please only submit the same content once.' });
         }
 
         // Insert the new report
         const insertReportQuery = `
-            INSERT INTO \`${appName}_reports\`
+            INSERT INTO \`${app_name}_reports\`
             (referenceId, type, reason, notes, link, reporterIp, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, NOW());
         `;
@@ -121,10 +122,10 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
             });
         });
 
-        // Check if warnlist or blacklist thresholds are exceeded
+        // Check if warnlist or blacklist thresholds are exceeded --------------------
         const countQuery = `
             SELECT COUNT(*) AS count
-            FROM \`${appName}_reports\`
+            FROM \`${app_name}_reports\`
             WHERE type = ? AND referenceId = ?;
         `;
         const countResult = await executeOnUserDatabase(
@@ -136,14 +137,14 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
         if (countResult.count >= warnlist_threshold) {
             const warnlistCheckQuery = `
                 SELECT COUNT(*) AS count
-                FROM \`${appName}_warnlist\`
+                FROM \`${app_name}_warnlist\`
                 WHERE referenceId = ? AND type = ?;
             `;
             const warnlistCheck = await executeOnUserDatabase(dbDetails, warnlistCheckQuery, [referenceId, type]);
 
             if (warnlistCheck.count === 0) {
                 const warnlistInsertQuery = `
-                    INSERT INTO \`${appName}_warnlist\` (referenceId, type, reason, link)
+                    INSERT INTO \`${app_name}_warnlist\` (referenceId, type, reason, link)
                     VALUES (?, ?, ?, ?);
                 `;
                 await executeOnUserDatabase(
@@ -151,22 +152,20 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
                     warnlistInsertQuery,
                     [referenceId, type, reason || null, link || null]
                 );
-            } else {
-                return res.status(409).json({ error: 'Entry already exists in the warnlist.' });
             }
         }
 
         if (countResult.count >= blacklist_threshold) {
             const blacklistCheckQuery = `
                 SELECT COUNT(*) AS count
-                FROM \`${appName}_blacklist\`
+                FROM \`${app_name}_blacklist\`
                 WHERE referenceId = ? AND type = ?;
             `;
             const blacklistCheck = await executeOnUserDatabase(dbDetails, blacklistCheckQuery, [referenceId, type]);
 
             if (blacklistCheck.count === 0) {
                 const blacklistInsertQuery = `
-                    INSERT INTO \`${appName}_blacklist\` (referenceId, type, reason, link)
+                    INSERT INTO \`${app_name}_blacklist\` (referenceId, type, reason, link)
                     VALUES (?, ?, ?, ?);
                 `;
                 await executeOnUserDatabase(
@@ -174,14 +173,158 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
                     blacklistInsertQuery,
                     [referenceId, type, reason || null, link || null]
                 );
-            } else {
-                return res.status(409).json({ error: 'Entry already exists in the blacklist.' });
             }
         }
 
         res.status(201).json({ message: 'Report submitted successfully.' });
     } catch (error) {
         console.error('Error submitting report:', error);
-        res.status(500).json({ error: 'An error occurred while submitting the report.' });
+        res.status(500).json({ error: 'An error occurred while submitting the report: ' + error });
     }
 });
+
+// Endpoint 3.2: Delete an Entry
+reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, appId, table, entryId } = req.body; // `id` is the user ID
+
+    if (!["blacklist", "warnlist", "reports"].includes(table) || entryId == null || appId == null) res.status(400).json({ error: "Table, appId and entryId are required." });
+
+    try {
+        const db = getDB();
+
+        // Verify app ownership and fetch app details
+        const app = await verifyAppOwnership(db, appId, id);
+        if (!app) return res.status(403).json({ error: 'Unauthorized access.' });
+
+        const { app_id, creator_id, app_name } = app;
+
+        // Get the app's database
+        const dbDetails = await getUserDatabaseDetails(db, creator_id);
+
+        // Delete the entry
+        const deleteQuery = `DELETE FROM \`${app_name}_${table}\` WHERE id = ?;`;
+        await executeOnUserDatabase(dbDetails, deleteQuery, [entryId]);
+
+        res.status(200).json({ message: 'Entry deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        res.status(500).json({ error: 'An error occurred while deleting the entry: ' + error });
+    }
+});
+
+// Endpoint 3.3: Add to Blacklist or Warnlist
+reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, appId, table, referenceId, type, reason, link } = req.body;
+    if (!["blacklist", "warnlist"].includes(table) || referenceId == null || appId == null) res.status(400).json({ error: "Table, appId and referenceId are required." });
+
+    try {
+        const db = getDB();
+
+        // Verify app ownership and fetch app details
+        const app = await verifyAppOwnership(db, appId, id);
+        if (!app) return res.status(403).json({ error: 'Unauthorized access.' });
+
+        const { app_id, creator_id, app_name } = app;
+
+        // Get the app's database
+        const dbDetails = await getUserDatabaseDetails(db, creator_id);
+
+        // Prevent duplicates
+        const duplicateCheckQuery = `
+            SELECT COUNT(*) AS count FROM \`${app_name}_${table}\` WHERE referenceId = ? AND type = ?;
+        `;
+        const duplicateCheck = await executeOnUserDatabase(dbDetails, duplicateCheckQuery, [referenceId, type]);
+
+        if (duplicateCheck.count > 0) {
+            return res.status(409).json({ error: `Entry already exists in the ${table}.` });
+        }
+
+        // Insert into blacklist
+        const insertQuery = `
+            INSERT INTO \`${app_name}_${table}\` (referenceId, type, reason, link)
+            VALUES (?, ?, ?, ?);
+        `;
+        await executeOnUserDatabase(dbDetails, insertQuery, [entryId, type, reason || null, link || null]);
+
+        res.status(201).json({ message: `Entry added to ${table} successfully.` });
+    } catch (error) {
+        console.error('Error adding to blacklist:', error);
+        res.status(500).json({ error: 'An error occurred while adding to the table: ' + error });
+    }
+});
+
+// Endpoint 3.4: Clean a Table
+reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, appId, days, table } = req.body;
+
+    if (!days || days < 1 || !['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
+        return res.status(400).json({ error: 'Valid days (minimum 1), table ("reports", "warnlist", "blacklist"), and appId are required.' });
+    }
+
+    try {
+        const db = getDB();
+
+        // Verify app ownership and fetch app details
+        const app = await verifyAppOwnership(db, appId, id);
+        if (!app) return res.status(403).json({ error: 'Unauthorized access.' });
+
+        const { app_id, creator_id, app_name } = app;
+
+        // Get the app's database
+        const dbDetails = await getUserDatabaseDetails(db, creator_id);
+
+        // Clean the table
+        const cleanQuery = `
+        DELETE FROM \`${app_name}_${table}\` 
+        WHERE timestamp < NOW() - INTERVAL ? DAY;
+    `;
+        await executeOnUserDatabase(dbDetails, cleanQuery, [days]);
+
+        res.status(200).json({ message: 'Table cleaned successfully.' });
+    } catch (error) {
+        console.error('Error cleaning table:', error);
+        res.status(500).json({ error: 'An error occurred while cleaning the table: ' + error });
+    }
+});
+
+// Get entries
+reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (req, res) => {
+    const { id, appId, table, page } = req.query;
+
+    if (!['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
+        return res.status(400).json({ error: 'Valid table and appId are required.' });
+    }
+
+    try {
+        const db = getDB();
+
+        // Verify ownership or moderation
+        const app = await verifyAppOwnership(db, appId, id);
+        if (!app) {
+            return res.status(403).json({ error: 'Unauthorized to perform this action on the app.' });
+        }
+
+        const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
+        if (!dbDetails) {
+            return res.status(500).json({ error: 'User database not configured.' });
+        }
+
+        const limit = 50;
+        const offset = (page - 1) * limit;
+
+        // Fetch paginated results
+        const getQuery = `
+            SELECT * FROM \`${app.app_name}_${table}\` 
+            ORDER BY timestamp DESC
+            LIMIT ? OFFSET ?;
+        `;
+        const results = await executeOnUserDatabase(dbDetails, getQuery, [limit, offset]);
+
+        res.status(200).json({ data: results });
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        res.status(500).json({ error: 'An error occurred while fetching the data: '  + error });
+    }
+});
+
+module.exports = reportRouter;

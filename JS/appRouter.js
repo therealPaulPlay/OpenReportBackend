@@ -115,7 +115,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             return res.status(404).json({ error: 'Database connection details not found for user.' });
         }
 
-        // Create required tables in user's database !TODO add index on type and referenceId in all 3 tables
+        // Create required tables in user's database !TODO add index on type, timestamp (DESC) and referenceId in all 3 tables
         const tableQueries = [
             `CREATE TABLE IF NOT EXISTS ${appName}_reports (
                 id INT AUTO_INCREMENT PRIMARY KEY,

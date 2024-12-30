@@ -28,4 +28,12 @@ const appCreationLimiter = rateLimit({
     message: { error: 'You can create max. 10 apps per hour.' }
 });
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter };
+const manualEntryLimiter = rateLimit({
+    windowMs: 24 * 60 * 60 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 1000,
+    message: { error: 'You can modify max. 1000 entries individually per day to prevent misuse.' }
+});
+
+
+module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter, manualEntryLimiter };
