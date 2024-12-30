@@ -11,7 +11,7 @@ const registerLimiter = rateLimit({
     windowMs: 30 * 60 * 1000,
     keyGenerator: (req) => req.clientIp,
     max: 5,
-    message: { error: 'Too many accounts created from this IP, please try again after 24 hours.' }
+    message: { error: 'Too many accounts created from this IP, please try again after 30 minutes.' }
 });
 
 const standardLimiter = rateLimit({
@@ -21,4 +21,11 @@ const standardLimiter = rateLimit({
     message: { error: 'You are sending too many requests.' }
 });
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter };
+const appCreationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 10,
+    message: { error: 'You can create max. 10 apps per hour.' }
+});
+
+module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter };

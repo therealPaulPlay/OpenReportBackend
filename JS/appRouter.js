@@ -3,7 +3,7 @@ const appRouter = express.Router();
 const { getDB } = require('./connectDB.js');
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { executeOnUserDatabase } = require('./userDatabase.js');
-const { standardLimiter } = require('./rateLimiting.js');
+const { standardLimiter, appCreationLimiter } = require('./rateLimiting.js');
 const crypto = require('crypto');
 
 // Endpoint to get apps by user id
@@ -22,6 +22,7 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
                 ua.app_name,
                 ua.warnlist_threshold,
                 ua.blacklist_threshold,
+                ua.monthly_report_count,
                 CASE 
                     WHEN ua.creator_id = ? THEN true
                     ELSE false
@@ -46,8 +47,8 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
     }
 });
 
-// Endpoint to create a new app !TODO: Also create tables in the user's database
-appRouter.post('/create', standardLimiter, authenticateTokenWithId, async (req, res) => {
+// Endpoint to create a new app
+appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
     const { id, appName, domains } = req.body;
 
