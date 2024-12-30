@@ -4,6 +4,7 @@ const { getDB } = require('./connectDB.js');
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { executeOnUserDatabase } = require('./userDatabase.js');
 const { standardLimiter } = require('./rateLimiting.js');
+const crypto = require('crypto');
 
 // Endpoint to get apps by user id
 appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -45,7 +46,7 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
     }
 });
 
-// Endpoint to create a new app
+// Endpoint to create a new app !TODO: Also create tables in the user's database
 appRouter.post('/create', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
     const { id, appName, domains } = req.body;
@@ -72,19 +73,21 @@ appRouter.post('/create', standardLimiter, authenticateTokenWithId, async (req, 
             return res.status(409).json({ error: 'App with the same name already exists.' });
         }
 
-        // Insert new app
+        const apiKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character key
+
+        // Insert new app into users_apps table
         const insertAppQuery = `
-            INSERT INTO users_apps (creator_id, app_name)
-            VALUES (?, ?)
+            INSERT INTO users_apps (creator_id, app_name, api_key)
+            VALUES (?, ?, ?)
         `;
         const appId = await new Promise((resolve, reject) => {
-            db.query(insertAppQuery, [id, appName], (err, results) => {
+            db.query(insertAppQuery, [id, appName, apiKey], (err, results) => {
                 if (err) return reject(err);
                 resolve(results.insertId);
             });
         });
 
-        // Insert domains
+        // Insert domains into users_apps_domains table
         const insertDomainQuery = 'INSERT INTO users_apps_domains (app_id, domain) VALUES (?, ?)';
         for (const domain of domains) {
             await new Promise((resolve, reject) => {
@@ -95,10 +98,63 @@ appRouter.post('/create', standardLimiter, authenticateTokenWithId, async (req, 
             });
         }
 
-        res.status(201).json({ message: 'App created successfully.' });
+        // Get user's database connection details
+        const dbDetailsQuery = `
+            SELECT db_host, db_user_name, db_password, db_database, db_port
+            FROM users_databases WHERE user_id = ?
+        `;
+        const dbDetails = await new Promise((resolve, reject) => {
+            db.query(dbDetailsQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!dbDetails) {
+            return res.status(404).json({ error: 'Database connection details not found for user.' });
+        }
+
+        // Create required tables in user's database
+        const tableQueries = [
+            `CREATE TABLE IF NOT EXISTS ${appName}_reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                referenceId VARCHAR(255) NOT NULL,
+                type VARCHAR(255) NOT NULL,
+                reason VARCHAR(255),
+                notes TEXT,
+                link VARCHAR(255),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                reporterIp VARCHAR(45) NOT NULL
+            )`,
+            `CREATE TABLE IF NOT EXISTS ${appName}_warnlist (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                referenceId VARCHAR(255) NOT NULL,
+                type VARCHAR(255) NOT NULL,
+                reason VARCHAR(255),
+                link VARCHAR(255),
+                UNIQUE KEY unique_type_reference (type, referenceId)
+            )`,
+            `CREATE TABLE IF NOT EXISTS ${appName}_blacklist (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                referenceId VARCHAR(255) NOT NULL,
+                type VARCHAR(255) NOT NULL,
+                reason VARCHAR(255),
+                link VARCHAR(255),
+                UNIQUE KEY unique_type_reference (type, referenceId)
+            )`,
+        ];
+
+        for (const query of tableQueries) {
+            await executeOnUserDatabase(dbDetails, query);
+        }
+
+        res.status(201).json({
+            message: 'App created successfully.',
+            apiKey,
+        });
     } catch (error) {
         console.error('Error creating app:', error);
-        res.status(500).json({ error: 'An error occurred while creating the app.' });
+        res.status(500).json({ error: 'An error occurred while creating the app: ' + error });
     }
 });
 
@@ -160,7 +216,36 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
 
         const appId = app.id;
 
-        // Delete the app
+        // Fetch user's database connection details
+        const dbDetailsQuery = `
+            SELECT db_host, db_user_name, db_password, db_database, db_port
+            FROM users_databases WHERE user_id = ?
+        `;
+        const dbDetails = await new Promise((resolve, reject) => {
+            db.query(dbDetailsQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!dbDetails) {
+            return res.status(404).json({ error: 'Database connection details not found for user.' });
+        }
+
+        // Delete related tables in user's database
+        const tablesToDelete = [`${appName}_reports`, `${appName}_warnlist`, `${appName}_blacklist`];
+        for (const table of tablesToDelete) {
+            try {
+                await executeOnUserDatabase(
+                    dbDetails,
+                    `DROP TABLE IF EXISTS \`${table}\``
+                );
+            } catch (error) {
+                console.warn(`Could not delete table ${table}:`, error.message);
+            }
+        }
+
+        // Delete the app from users_apps table
         const deleteAppQuery = 'DELETE FROM users_apps WHERE id = ?';
         await new Promise((resolve, reject) => {
             db.query(deleteAppQuery, [appId], (err) => {
@@ -169,20 +254,7 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
             });
         });
 
-        // Delete related tables in user's database
-        const tablesToDelete = [`${appName}_reports`, `${appName}_warnlist`, `${appName}_blacklist`];
-        for (const table of tablesToDelete) {
-            try {
-                await executeOnUserDatabase(
-                    { user_id: id },
-                    `DROP TABLE IF EXISTS \`${table}\``
-                );
-            } catch (error) {
-                console.warn(`Could not delete table ${table}:`, error.message);
-            }
-        }
-
-        res.json({ message: 'App deleted successfully.' });
+        res.json({ message: 'App and related tables deleted successfully.' });
     } catch (error) {
         console.error('Error deleting app:', error);
         res.status(500).json({ error: 'An error occurred while deleting the app.' });

@@ -193,6 +193,7 @@ The application uses several tables to store user, app, and moderation-related d
 | warnlist_threshold   | INT          | NO       |            | DEFAULT 5                  |
 | blacklist_threshold  | INT          | NO       |            | DEFAULT 10                 |
 | moderator_count      | INT          | NO       |            |                            |
+| api_key              | VARCHAR(255) | NO       |            |                            |
 
 #### `users_apps_domains`
 | Column  | Type         | Nullable | Key        | Additional Info                           |
@@ -214,7 +215,7 @@ The application uses several tables to store user, app, and moderation-related d
 
 1. **Indexing**:
    - Index the `email` column in the `users` table for faster lookups.
-   - Index the `app_name` column in the `users_apps` table to improve search performance.
+   - Index the `app_name` and `api_key` column in the `users_apps` table to improve performance.
    - Index the `user_id` column in the `apps_moderators` table for efficient queries.
 
 2. **Foreign Key Constraints**:

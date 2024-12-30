@@ -17,16 +17,16 @@ async function testDatabaseConnection(details) {
 
 // Execute query on user database and ensure the connection is closed
 async function executeOnUserDatabase(details, query, params = []) {
-    const { host, user, password, database, port } = details;
+    const { db_host, db_user_name, db_password, db_database, db_port } = details;
 
     try {
-        const connection = await mysql.createConnection({ host, user, password, database, port });
+        const connection = await mysql.createConnection({ db_host, db_user_name, db_password, db_database, db_port });
         const [results] = await connection.execute(query, params);
         await connection.end();
         return results;
     } catch (error) {
         console.error('Error executing query on user database:', error);
-        throw new Error(`Failed to execute query: ${error.message}`);
+        throw new Error(`Failed to execute query on the user's own database: ${error.message}`);
     }
 }
 
