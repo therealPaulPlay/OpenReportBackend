@@ -156,7 +156,7 @@ This router manages application moderators.
 
 ---
 
-## User MySQL Database Setup
+## MySQL Database Setup
 
 The application uses several tables to store user, app, and moderation-related data.
 
