@@ -133,6 +133,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 UNIQUE KEY unique_type_reference (type, referenceId)
             )`,
             `CREATE TABLE IF NOT EXISTS ${appName}_blacklist (
@@ -141,11 +142,31 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 UNIQUE KEY unique_type_reference (type, referenceId)
             )`,
         ];
 
         for (const query of tableQueries) {
+            await executeOnUserDatabase(dbDetails, query);
+        }
+
+        // Now, add indexes after tables are created
+        const indexQueries = [
+            `CREATE INDEX IF NOT EXISTS idx_reports_type ON ${appName}_reports(type);`,
+            `CREATE INDEX IF NOT EXISTS idx_reports_timestamp ON ${appName}_reports(timestamp DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_reports_referenceId ON ${appName}_reports(referenceId);`,
+
+            `CREATE INDEX IF NOT EXISTS idx_warnlist_type ON ${appName}_warnlist(type);`,
+            `CREATE INDEX IF NOT EXISTS idx_warnlist_timestamp ON ${appName}_warnlist(timestamp DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_warnlist_referenceId ON ${appName}_warnlist(referenceId);`,
+
+            `CREATE INDEX IF NOT EXISTS idx_blacklist_type ON ${appName}_blacklist(type);`,
+            `CREATE INDEX IF NOT EXISTS idx_blacklist_timestamp ON ${appName}_blacklist(timestamp DESC);`,
+            `CREATE INDEX IF NOT EXISTS idx_blacklist_referenceId ON ${appName}_blacklist(referenceId);`
+        ];
+
+        for (const query of indexQueries) {
             await executeOnUserDatabase(dbDetails, query);
         }
 

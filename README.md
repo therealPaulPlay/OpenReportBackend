@@ -156,6 +156,75 @@ This router manages application moderators.
 
 ---
 
+### `/report` Router
+
+This router handles reporting functionalities for apps, including submission, deletion, manual additions, cleaning, and retrieving entries.
+
+#### Endpoints:
+
+1. **POST `/submit`**
+   - **Description**: Submit a report for a specific app.
+   - **Body**:
+     ```json
+     {
+       "key": "string",
+       "referenceId": "string",
+       "type": "string",
+       "reason": "string",
+       "notes": "string",
+       "link": "string"
+     }
+     ```
+
+2. **DELETE `/delete`**
+   - **Description**: Delete an entry from the reports, blacklist, or warnlist of a specific app.
+   - **Body**:
+     ```json
+     {
+       "id": "number",
+       "appId": "number",
+       "table": "string",
+       "entryId": "number"
+     }
+     ```
+
+3. **POST `/add-manually`**
+   - **Description**: Manually add an entry to the blacklist or warnlist of a specific app.
+   - **Body**:
+     ```json
+     {
+       "id": "number",
+       "appId": "number",
+       "table": "string",
+       "referenceId": "string",
+       "type": "string",
+       "reason": "string",
+       "link": "string"
+     }
+     ```
+
+4. **DELETE `/clean`**
+   - **Description**: Clean old entries from the reports, blacklist, or warnlist of a specific app based on age.
+   - **Body**:
+     ```json
+     {
+       "id": "number",
+       "appId": "number",
+       "days": "number",
+       "table": "string"
+     }
+     ```
+
+5. **PUT `/get-table`**
+   - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination.
+   - **Query Parameters**:
+     - `id` (number): The user ID.
+     - `appId` (number): The ID of the app.
+     - `table` (string): The name of the table ("reports", "warnlist", "blacklist").
+     - `page` (number): The page number for pagination.
+
+---
+
 ## MySQL Database Setup
 
 The application uses several tables to store user, app, and moderation-related data.

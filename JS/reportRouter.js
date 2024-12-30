@@ -4,6 +4,7 @@ const { executeOnUserDatabase } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { standardLimiter, manualEntryLimiter } = require('./rateLimiting.js');
+const validateCaptcha = require('./captchaMiddleware.js');
 
 // Function to verify ownership or moderation and return app info
 async function verifyAppOwnership(db, appId, userId) {
@@ -53,8 +54,8 @@ async function verifyAppByKey(db, key) {
     });
 }
 
-// Submit a report !TODO captcha
-reportRouter.post('/submit', standardLimiter, async (req, res) => {
+// Submit a report
+reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) => {
     const { key, referenceId, type, reason, notes, link } = req.body;
     const reporterIp = req.clientIp;
 
@@ -144,8 +145,8 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
 
             if (warnlistCheck.count === 0) {
                 const warnlistInsertQuery = `
-                    INSERT INTO \`${app_name}_warnlist\` (referenceId, type, reason, link)
-                    VALUES (?, ?, ?, ?);
+                    INSERT INTO \`${app_name}_warnlist\` (referenceId, type, reason, link, timestamp)
+                    VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
                     dbDetails,
@@ -165,8 +166,8 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
 
             if (blacklistCheck.count === 0) {
                 const blacklistInsertQuery = `
-                    INSERT INTO \`${app_name}_blacklist\` (referenceId, type, reason, link)
-                    VALUES (?, ?, ?, ?);
+                    INSERT INTO \`${app_name}_blacklist\` (referenceId, type, reason, link, timestamp)
+                    VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
                     dbDetails,
@@ -187,7 +188,7 @@ reportRouter.post('/submit', standardLimiter, async (req, res) => {
 reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, table, entryId } = req.body; // `id` is the user ID
 
-    if (!["blacklist", "warnlist", "reports"].includes(table) || entryId == null || appId == null) res.status(400).json({ error: "Table, appId and entryId are required." });
+    if (!["blacklist", "warnlist", "reports"].includes(table) || entryId == null || appId == null) return res.status(400).json({ error: "Table, appId and entryId are required." });
 
     try {
         const db = getDB();
@@ -215,7 +216,7 @@ reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (
 // Endpoint 3.3: Add to Blacklist or Warnlist
 reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, table, referenceId, type, reason, link } = req.body;
-    if (!["blacklist", "warnlist"].includes(table) || referenceId == null || appId == null) res.status(400).json({ error: "Table, appId and referenceId are required." });
+    if (!["blacklist", "warnlist"].includes(table) || referenceId == null || appId == null) return res.status(400).json({ error: "Table, appId and referenceId are required." });
 
     try {
         const db = getDB();
@@ -244,7 +245,7 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
             INSERT INTO \`${app_name}_${table}\` (referenceId, type, reason, link)
             VALUES (?, ?, ?, ?);
         `;
-        await executeOnUserDatabase(dbDetails, insertQuery, [entryId, type, reason || null, link || null]);
+        await executeOnUserDatabase(dbDetails, insertQuery, [referenceId, type, reason || null, link || null]);
 
         res.status(201).json({ message: `Entry added to ${table} successfully.` });
     } catch (error) {
@@ -289,7 +290,7 @@ reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (r
 
 // Get entries
 reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (req, res) => {
-    const { id, appId, table, page } = req.query;
+    const { id, appId, table, page = 1 } = req.body;
 
     if (!['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
         return res.status(400).json({ error: 'Valid table and appId are required.' });
