@@ -30,7 +30,7 @@ accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (
         const existingDb = await new Promise((resolve, reject) => {
             db.query(userDbQuery, [id], (err, results) => {
                 if (err) return reject(err);
-                resolve(results[0]);
+                resolve(results);
             });
         });
 
