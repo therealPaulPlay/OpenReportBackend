@@ -1,12 +1,12 @@
 const nodemailer = require('nodemailer');
 
-// Configure your email service - !CHANGE these details to match your email provider
+// Configure your email service
 let transporter = nodemailer.createTransport({
-    host: "smtp.example.com",
-    port: 465,
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
     auth: {
-        user: "email-address",
-        pass: "password", // Ideally store in a .env file
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
     },
 });
 
