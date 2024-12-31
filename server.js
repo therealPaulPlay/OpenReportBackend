@@ -38,6 +38,11 @@ app.use("/app", appRouter);
 app.use("/moderator", moderatorRouter);
 app.use("/report", reportRouter)
 
+// Health check
+app.get('/health', (req, res) => {
+    res.status(200).json({ message: 'Server is healthy. I hope you are too!' });
+});
+
 // Start the server ----------------------------------------------------------------------------------------------------------------------------------
 app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
