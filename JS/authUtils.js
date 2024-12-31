@@ -28,7 +28,7 @@ function createNewJwtToken(user) {
     let accessToken = '';
 
     try {
-        const jwtTokenExpirationTime = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // !CHANGE expiration period of the bearer token, currently set to 7 days (7 * 24 * 60 * 60 = 604,800 seconds).
+        const jwtTokenExpirationTime = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // 7 days
 
         accessToken = jwt.sign(
             {
