@@ -30,7 +30,28 @@ async function executeOnUserDatabase(details, query, params = []) {
     }
 }
 
+// Function to fetch user database details
+async function getUserDatabaseDetails(db, userId) {
+    try {
+        const query = `
+        SELECT db_host, db_user_name, db_password, db_database, db_port
+        FROM users_databases
+        WHERE user_id = ?;
+    `;
+        return new Promise((resolve, reject) => {
+            db.query(query, [userId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0] || null);
+            });
+        });
+    } catch (error) {
+        console.error('Error obtaining database credentials:', error);
+        throw new Error(`Failed to obtain database credentials: ${error.message}`);
+    }
+}
+
 module.exports = {
     testDatabaseConnection,
     executeOnUserDatabase,
+    getUserDatabaseDetails,
 };

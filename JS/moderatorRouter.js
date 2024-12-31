@@ -7,8 +7,7 @@ const { standardLimiter } = require('./rateLimiting.js');
 // Get moderators of a specific app
 moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { appName } = req.body; // Include the appName in the request body
-    const userId = req.body.id;
+    const { id: userId, appName } = req.body; // Include the appName in the request body
 
     if (!appName) {
         return res.status(400).json({ error: 'App name is required.' });
@@ -56,8 +55,7 @@ moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, asy
 // Add a moderator to an app
 moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { appName, email } = req.body; // Include these 2 properties in the request body
-    const userId = req.body.id;
+    const { id: userId, appName, email } = req.body; // Include these 2 properties in the request body
 
     if (!appName || !email) {
         return res.status(400).json({ error: 'App name and email are required.' });
@@ -143,8 +141,7 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
 // Remove a moderator from an app
 moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { appName, email } = req.body; // Include these 2 properties in the request body
-    const userId = req.body.id;
+    const { id: userId, appName, email } = req.body; // Include these 2 properties in the request body
 
     if (!appName || !email) {
         return res.status(400).json({ error: 'App name and email are required.' });

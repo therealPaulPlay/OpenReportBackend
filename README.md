@@ -68,10 +68,10 @@ This router manages user-specific database connections.
      {
        "id": "number",
        "db_database": "string",
-       "db_host": "string",
        "db_port": "number",
-       "db_user_name": "string",
-       "db_password": "string"
+       "db_host": "string",
+       "db_password": "string",
+       "db_user_name": "string"
      }
      ```
 
@@ -88,7 +88,7 @@ This router manages user-created applications.
      ```json
      {
        "id": "number",
-       "name": "string",
+       "appName": "string",
        "domains": ["string"]
      }
      ```
@@ -113,7 +113,7 @@ This router manages user-created applications.
      }
      ```
 
-4. **GET `/:id`**
+4. **GET `/apps/:id`**
    - Returns all apps belonging to or moderated by the user.
    - **No Body Required**.
 

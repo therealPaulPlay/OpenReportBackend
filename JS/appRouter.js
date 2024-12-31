@@ -2,7 +2,7 @@ const express = require('express');
 const appRouter = express.Router();
 const { getDB } = require('./connectDB.js');
 const { authenticateTokenWithId } = require('./authUtils.js');
-const { executeOnUserDatabase } = require('./userDatabase.js');
+const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const { standardLimiter, appCreationLimiter } = require('./rateLimiting.js');
 const crypto = require('crypto');
 
@@ -56,8 +56,8 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         return res.status(400).json({ error: 'Id, app name, and domains are required.' });
     }
 
-    if (domains.length > 100) {
-        return res.status(400).json({ error: 'A maximum of 100 domains is allowed.' });
+    if (domains.length > 30) {
+        return res.status(400).json({ error: 'A maximum of 30 domains is allowed.' });
     }
 
     try {
@@ -239,20 +239,7 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
         const appId = app.id;
 
         // Fetch user's database connection details
-        const dbDetailsQuery = `
-            SELECT db_host, db_user_name, db_password, db_database, db_port
-            FROM users_databases WHERE user_id = ?
-        `;
-        const dbDetails = await new Promise((resolve, reject) => {
-            db.query(dbDetailsQuery, [id], (err, results) => {
-                if (err) return reject(err);
-                resolve(results[0]);
-            });
-        });
-
-        if (!dbDetails) {
-            return res.status(404).json({ error: 'Database connection details not found for user.' });
-        }
+        const dbDetails = await getUserDatabaseDetails(db, id);
 
         // Delete related tables in user's database
         const tablesToDelete = [`${appName}_reports`, `${appName}_warnlist`, `${appName}_blacklist`];

@@ -1,6 +1,6 @@
 const express = require('express');
 const { getDB } = require('./db.js');
-const { executeOnUserDatabase } = require('./userDatabase.js');
+const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { standardLimiter, manualEntryLimiter } = require('./rateLimiting.js');
@@ -16,21 +16,6 @@ async function verifyAppOwnership(db, appId, userId) {
     `;
     return new Promise((resolve, reject) => {
         db.query(query, [appId, userId, userId], (err, results) => {
-            if (err) return reject(err);
-            resolve(results[0] || null);
-        });
-    });
-}
-
-// Function to fetch user database details
-async function getUserDatabaseDetails(db, userId) {
-    const query = `
-        SELECT db_host, db_user_name, db_password, db_database, db_port
-        FROM users_databases
-        WHERE user_id = ?;
-    `;
-    return new Promise((resolve, reject) => {
-        db.query(query, [userId], (err, results) => {
             if (err) return reject(err);
             resolve(results[0] || null);
         });
@@ -80,9 +65,6 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
 
         // Fetch user database connection details
         const dbDetails = await getUserDatabaseDetails(db, creator_id);
-        if (!dbDetails) {
-            return res.status(500).json({ error: 'User database not configured.' });
-        }
 
         // Prevent duplicate reports by IP for the same type and referenceId
         const duplicateCheckQuery = `
@@ -306,9 +288,6 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         }
 
         const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
-        if (!dbDetails) {
-            return res.status(500).json({ error: 'User database not configured.' });
-        }
 
         const limit = 50;
         const offset = (page - 1) * limit;
