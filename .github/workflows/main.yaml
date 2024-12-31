@@ -1,0 +1,47 @@
+name: Deploy Account Backend Node Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-primary:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Install SSH keys for Primary Server
+        run: |
+          install -m 600 -D /dev/null ~/.ssh/id_rsa
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
+
+      - name: Connect to Primary Server, build image, and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ secrets.WORK_DIR }}
+
+            # Write .env file from secret
+            echo "${{ secrets.ENV_FILE }}" > .env
+
+            # Pull latest changes from Git
+            git checkout ${{ secrets.MAIN_BRANCH }}
+            git pull
+
+            # Build Docker image
+            docker build -t openreportbackend .
+
+            # Check if container openreportbackend exists
+            if ! docker ps -a --format '{{.Names}}' | grep -q "^openreportbackend$"; then
+              echo "Container openreportbackend does not exist, creating..."
+              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreportbackend --env-file .env openreportbackend
+            else
+              echo "Container openreportbackend exists, stopping and removing..."
+              docker stop openreportbackend || true
+              docker rm openreportbackend || true
+              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreportbackend --env-file .env openreportbackend
+            fi
+          EOF
+
+      - name: Cleanup SSH for Primary Server
+        run: rm -rf ~/.ssh
