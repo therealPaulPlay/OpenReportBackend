@@ -19,7 +19,17 @@ const app = express();
 
 // CORS configuration ------------------------------------------------------------
 app.use(cors({
-    origin: process.env.CORS_ORIGIN
+    origin: (origin, callback) => {
+        const corsOrigins = process.env.CORS_ORIGIN.split(',').map(o =>
+            /^\/.*\/$/.test(o) ? new RegExp(o.slice(1, -1)) : o
+        );
+
+        if (corsOrigins.some(pattern => typeof pattern === 'string' ? pattern === origin : pattern.test(origin))) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
 }));
 
 // Middleware
