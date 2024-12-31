@@ -26,7 +26,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
 
     try {
         // Check if email already exists
-        const emailExistsQuery = 'SELECT id FROM accounts WHERE email = ?';
+        const emailExistsQuery = 'SELECT id FROM users WHERE email = ?';
         const existingEmailUser = await new Promise((resolve, reject) => {
             db.query(emailExistsQuery, [email], (err, results) => {
                 if (err) return reject(err);
@@ -45,7 +45,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
         const now = new Date();
 
         // Insert new user into the database
-        const insertUserQuery = 'INSERT INTO accounts (user_name, email, password, created_at) VALUES (?, ?, ?, ?, ?)';
+        const insertUserQuery = 'INSERT INTO users (user_name, email, password, created_at) VALUES (?, ?, ?, ?, ?)';
         const newUser = await new Promise((resolve, reject) => {
             db.query(insertUserQuery, [userName, email, hashedPassword, now], (err, results) => {
                 if (err) return reject(err);
@@ -71,7 +71,7 @@ accountRouter.post('/login', loginLimiter, async (req, res) => {
 
     try {
         // Find user by email
-        const userQuery = 'SELECT id, user_name, password FROM accounts WHERE email = ?';
+        const userQuery = 'SELECT id, user_name, password FROM users WHERE email = ?';
         const user = await new Promise((resolve, reject) => {
             db.query(userQuery, [email], (err, results) => {
                 if (err) return reject(err);
@@ -115,7 +115,7 @@ accountRouter.delete('/delete', standardLimiter, async (req, res) => {
 
     try {
         // Find user by email to retrieve password hash
-        const userQuery = 'SELECT password FROM accounts WHERE id = ?';
+        const userQuery = 'SELECT password FROM users WHERE id = ?';
         const user = await new Promise((resolve, reject) => {
             db.query(userQuery, [id], (err, results) => {
                 if (err) return reject(err);
@@ -134,7 +134,7 @@ accountRouter.delete('/delete', standardLimiter, async (req, res) => {
         }
 
         // Delete user account
-        const deleteUserQuery = 'DELETE FROM accounts WHERE id = ?';
+        const deleteUserQuery = 'DELETE FROM users WHERE id = ?';
         await new Promise((resolve, reject) => {
             db.query(deleteUserQuery, [id], (err, results) => {
                 if (err) return reject(err);
@@ -162,7 +162,7 @@ accountRouter.post('/reset-password-request', standardLimiter, async (req, res) 
 
     try {
         // Find user by email
-        const userQuery = 'SELECT id FROM accounts WHERE email = ?';
+        const userQuery = 'SELECT id FROM users WHERE email = ?';
         const user = await new Promise((resolve, reject) => {
             db.query(userQuery, [email], (err, results) => {
                 if (err) return reject(err);
@@ -212,7 +212,7 @@ accountRouter.post('/reset-password', standardLimiter, async (req, res) => {
         const hashedPassword = await getEncodedPassword(newPassword);
 
         // Update the user's password in the database
-        const updatePasswordQuery = 'UPDATE accounts SET password = ? WHERE id = ?';
+        const updatePasswordQuery = 'UPDATE users SET password = ? WHERE id = ?';
         await new Promise((resolve, reject) => {
             db.query(updatePasswordQuery, [hashedPassword, decoded.id], (err, results) => { // This takes the id from the authentication token to ensure only this account can be resetted
                 if (err) return reject(err);
