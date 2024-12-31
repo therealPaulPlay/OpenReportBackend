@@ -3,9 +3,35 @@ const accountRouter = express.Router();
 
 const jwt = require('jsonwebtoken');
 const { standardLimiter, registerLimiter, loginLimiter } = require("./rateLimiting.js");
-const { getEncodedPassword, isPasswordValid, createNewJwtToken } = require("./authUtils.js");
+const { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { sendMail } = require('./sendEmails.js');
+
+// Get user details
+accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const id = req.params?.id;
+    if (id == null) return res.status(400).json({ error: "Id is required." });
+
+    const db = getDB();
+
+
+    try {
+        const getUserQuery = 'SELECT * FROM users WHERE id = ?';
+        const details = await new Promise((resolve, reject) => {
+            db.query(getUserQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results);
+            });
+        });
+
+        if (!details || details.length === 0) return res.status(404).json({ error: "User not found." });
+        res.json({ user: details[0] });
+
+    } catch (error) {
+        console.error("Error getting user:", error);
+        res.status(500).json({ error: "An error occured getting the user: " + error.message });
+    }
+});
 
 // Register Endpoint
 accountRouter.post('/register', registerLimiter, async (req, res) => {

@@ -54,6 +54,8 @@ This router handles account management functionality, such as registration, logi
      }
      ```
 
+6. **GET `/user/:id`**
+
 ---
 
 ### `/user-database` Router

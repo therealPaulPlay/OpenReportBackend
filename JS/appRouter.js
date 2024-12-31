@@ -176,7 +176,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         });
     } catch (error) {
         console.error('Error creating app:', error);
-        res.status(500).json({ error: 'An error occurred while creating the app: ' + error });
+        res.status(500).json({ error: 'An error occurred while creating the app: ' + error.message });
     }
 });
 

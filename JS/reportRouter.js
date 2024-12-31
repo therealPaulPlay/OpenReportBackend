@@ -162,7 +162,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         res.status(201).json({ message: 'Report submitted successfully.' });
     } catch (error) {
         console.error('Error submitting report:', error);
-        res.status(500).json({ error: 'An error occurred while submitting the report: ' + error });
+        res.status(500).json({ error: 'An error occurred while submitting the report: ' + error.message });
     }
 });
 
@@ -191,7 +191,7 @@ reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (
         res.status(200).json({ message: 'Entry deleted successfully.' });
     } catch (error) {
         console.error('Error deleting entry:', error);
-        res.status(500).json({ error: 'An error occurred while deleting the entry: ' + error });
+        res.status(500).json({ error: 'An error occurred while deleting the entry: ' + error.message });
     }
 });
 
@@ -232,7 +232,7 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
         res.status(201).json({ message: `Entry added to ${table} successfully.` });
     } catch (error) {
         console.error('Error adding to blacklist:', error);
-        res.status(500).json({ error: 'An error occurred while adding to the table: ' + error });
+        res.status(500).json({ error: 'An error occurred while adding to the table: ' + error.message });
     }
 });
 
@@ -266,7 +266,7 @@ reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (r
         res.status(200).json({ message: 'Table cleaned successfully.' });
     } catch (error) {
         console.error('Error cleaning table:', error);
-        res.status(500).json({ error: 'An error occurred while cleaning the table: ' + error });
+        res.status(500).json({ error: 'An error occurred while cleaning the table: ' + error.message });
     }
 });
 
@@ -303,7 +303,7 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         res.status(200).json({ data: results });
     } catch (error) {
         console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'An error occurred while fetching the data: '  + error });
+        res.status(500).json({ error: 'An error occurred while fetching the data: '  + error.message });
     }
 });
 
