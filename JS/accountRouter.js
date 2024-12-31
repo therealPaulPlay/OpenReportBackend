@@ -94,7 +94,7 @@ accountRouter.post('/login', loginLimiter, async (req, res) => {
 
         res.json({
             message: 'Login successful',
-            access_token: accessToken, // Here, the bearer token is being returned. Save it in the frontend to authorize future requests.
+            bearerToken: accessToken, // Here, the bearer token is being returned. Save it in the frontend to authorize future requests.
             id: user.id,
             userName: user.user_name
         });
