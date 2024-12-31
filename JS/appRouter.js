@@ -56,6 +56,16 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         return res.status(400).json({ error: 'Id, app name, and domains are required.' });
     }
 
+    const validAppNameRegex = /^[a-z0-9_-]+$/;
+
+    if (appName.includes(" ")) {
+        return res.status(400).json({ error: 'The app name cannot include whitespaces.' });
+    }
+
+    if (!validAppNameRegex.test(appName)) {
+        return res.status(400).json({ error: 'The app name can only contain lowercase letters, numbers, underscores, and hyphens.' });
+    }
+
     if (domains.length > 30) {
         return res.status(400).json({ error: 'A maximum of 30 domains is allowed.' });
     }
