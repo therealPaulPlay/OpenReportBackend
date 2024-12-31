@@ -71,7 +71,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
         const now = new Date();
 
         // Insert new user into the database
-        const insertUserQuery = 'INSERT INTO users (user_name, email, password, created_at) VALUES (?, ?, ?, ?, ?)';
+        const insertUserQuery = 'INSERT INTO users (user_name, email, password, created_at) VALUES (?, ?, ?, ?)';
         const newUser = await new Promise((resolve, reject) => {
             db.query(insertUserQuery, [userName, email, hashedPassword, now], (err, results) => {
                 if (err) return reject(err);
