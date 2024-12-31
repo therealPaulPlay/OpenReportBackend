@@ -1,5 +1,5 @@
 const express = require('express');
-const { getDB } = require('./db.js');
+const { getDB } = require('./connectDB.js');
 const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
