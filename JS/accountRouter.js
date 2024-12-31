@@ -14,7 +14,6 @@ accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (
 
     const db = getDB();
 
-
     try {
         const getUserQuery = 'SELECT * FROM users WHERE id = ?';
         const details = await new Promise((resolve, reject) => {
@@ -25,7 +24,17 @@ accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (
         });
 
         if (!details || details.length === 0) return res.status(404).json({ error: "User not found." });
-        res.json({ user: details[0] });
+
+        // Check if the user already has a database record
+        const userDbQuery = 'SELECT db_database FROM users_databases WHERE user_id = ?';
+        const existingDb = await new Promise((resolve, reject) => {
+            db.query(userDbQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        res.json({ user: details[0], userDatabase: existingDb[0] || null });
 
     } catch (error) {
         console.error("Error getting user:", error);
