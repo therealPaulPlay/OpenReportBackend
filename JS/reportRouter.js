@@ -290,7 +290,7 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
 
         const limit = 50;
-        const offset = (page - 1) * limit;
+        const offset = (Number(page) - 1) * limit;
 
         // Fetch paginated results
         const getQuery = `
@@ -298,6 +298,8 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
             ORDER BY timestamp DESC
             LIMIT ? OFFSET ?;
         `;
+        console.log(getQuery);
+        console.log([limit, offset]);
         const results = await executeOnUserDatabase(dbDetails, getQuery, [limit, offset]);
 
         res.status(200).json({ data: results });
