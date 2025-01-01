@@ -219,7 +219,7 @@ This router handles reporting functionalities for apps, including submission, de
 
 5. **PUT `/get-table`**
    - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination.
-   - **Query Parameters**:
+   - **Body**:
      - `id` (number): The user ID.
      - `appId` (number): The ID of the app.
      - `table` (string): The name of the table ("reports", "warnlist", "blacklist").
