@@ -296,9 +296,9 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         const getQuery = `
             SELECT * FROM \`${app.app_name}_${table}\`
             ORDER BY timestamp DESC
-            LIMIT ?, ?;
+            LIMIT ${offset}, ${limit};
         `;
-        const results = await executeOnUserDatabase(dbDetails, getQuery, [limit, offset]);
+        const results = await executeOnUserDatabase(dbDetails, getQuery, []);
 
         res.status(200).json({ data: results });
     } catch (error) {
