@@ -16,11 +16,11 @@ userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, asy
     try {
         // Test the connection details
         const testResult = await testDatabaseConnection({
-            host: db_host,
-            user: db_user_name,
-            password: db_password,
-            database: db_database,
-            port: db_port,
+            db_host,
+            db_user_name,
+            db_password,
+            db_database,
+            db_port,
         });
 
         if (!testResult.success) {

@@ -95,7 +95,7 @@ This router manages user-created applications.
      }
      ```
 
-2. **PUT `/update-thresholds`**
+2. **PATCH `/update-thresholds`**
    - **Body**:
      ```json
      {
