@@ -21,11 +21,6 @@ async function executeOnUserDatabase(details, query, params = []) {
 
     try {
         const connection = await mysql.createConnection({ host, user, password, database, port });
-
-        // Log the query and parameters before executing
-        console.log('Executing query:', query);
-        console.log('With parameters:', params);
-
         const [results] = await connection.execute(query, params);
         await connection.end();
         return results;

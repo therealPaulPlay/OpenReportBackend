@@ -294,16 +294,16 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
 
         // Fetch paginated results
         const getQuery = `
-            SELECT * FROM \`${app.app_name}_${table}\` 
+            SELECT * FROM \`${app.app_name}_${table}\`
             ORDER BY timestamp DESC
-            LIMIT ? OFFSET ?;
+            LIMIT ?, ?;
         `;
         const results = await executeOnUserDatabase(dbDetails, getQuery, [limit, offset]);
 
         res.status(200).json({ data: results });
     } catch (error) {
         console.error('Error fetching data:', error);
-        res.status(500).json({ error: 'An error occurred while fetching the data: '  + error.message });
+        res.status(500).json({ error: 'An error occurred while fetching the data: ' + error.message });
     }
 });
 
