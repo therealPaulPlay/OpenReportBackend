@@ -298,8 +298,6 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
             ORDER BY timestamp DESC
             LIMIT ? OFFSET ?;
         `;
-        console.log(getQuery);
-        console.log([limit, offset]);
         const results = await executeOnUserDatabase(dbDetails, getQuery, [limit, offset]);
 
         res.status(200).json({ data: results });
