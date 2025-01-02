@@ -60,7 +60,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         // Check domain restrictions
         if (referrer) {
             try {
-                const domain = new URL(referrer).hostname;
+                const domain = new URL(referrer).host;
                 const domainCheckQuery = `
                     SELECT COUNT(*) as count 
                     FROM users_apps_domains 
