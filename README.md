@@ -100,7 +100,7 @@ This router manages user-created applications.
      ```json
      {
        "id": "number",
-       "appName": "string",
+       "appId": "number",
        "warnlistThreshold": "number",
        "blacklistThreshold": "number"
      }
@@ -111,13 +111,23 @@ This router manages user-created applications.
      ```json
      {
        "id": "number",
-       "appName": "string"
+       "appId": "number"
      }
      ```
 
 4. **GET `/apps/:id`**
    - Returns all apps belonging to or moderated by the user.
    - **No Body Required**.
+
+5. **PUT `/update-domains`**
+- **Body**:
+  ```json
+  {
+    "id": "number",
+    "appId": "number",
+    "domains": ["string"]
+  }
+  ```
 
 ---
 
@@ -132,7 +142,7 @@ This router manages application moderators.
      ```json
      {
        "id": "number",
-       "appName": "string",
+       "appId": "number",
        "email": "string"
      }
      ```
@@ -142,7 +152,7 @@ This router manages application moderators.
      ```json
      {
        "id": "number",
-       "appName": "string",
+       "appId": "number",
        "email": "string"
      }
      ```
@@ -152,7 +162,7 @@ This router manages application moderators.
      ```json
      {
        "id": "number",
-       "appName": "string"
+       "appId": "number"
      }
      ```
 

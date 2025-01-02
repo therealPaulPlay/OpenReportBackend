@@ -100,7 +100,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         );
 
         if (duplicateResult[0].count > 0) {
-            return res.status(409).json({ error: 'Please only submit the same content once.' });
+            return res.status(409).json({ error: 'Please only report the same content once.' });
         }
 
         // Insert the new report

@@ -4,6 +4,7 @@ const { getDB } = require('./connectDB.js');
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const { standardLimiter, appCreationLimiter } = require('./rateLimiting.js');
+const cron = require('node-cron');
 const crypto = require('crypto');
 
 // Endpoint to get apps by user id
@@ -167,11 +168,11 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             `CREATE INDEX idx_reports_type ON ${appName}_reports(type);`,
             `CREATE INDEX idx_reports_timestamp ON ${appName}_reports(timestamp DESC);`,
             `CREATE INDEX idx_reports_referenceId ON ${appName}_reports(referenceId);`,
-        
+
             `CREATE INDEX idx_warnlist_type ON ${appName}_warnlist(type);`,
             `CREATE INDEX idx_warnlist_timestamp ON ${appName}_warnlist(timestamp DESC);`,
             `CREATE INDEX idx_warnlist_referenceId ON ${appName}_warnlist(referenceId);`,
-        
+
             `CREATE INDEX idx_blacklist_type ON ${appName}_blacklist(type);`,
             `CREATE INDEX idx_blacklist_timestamp ON ${appName}_blacklist(timestamp DESC);`,
             `CREATE INDEX idx_blacklist_referenceId ON ${appName}_blacklist(referenceId);`
@@ -194,20 +195,20 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
 // Endpoint to update thresholds
 appRouter.patch('/update-thresholds', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id, appName, warnlistThreshold, blacklistThreshold } = req.body;
+    const { id, appId, warnlistThreshold, blacklistThreshold } = req.body;
 
-    if (!id || !appName || warnlistThreshold == null || blacklistThreshold == null) {
-        return res.status(400).json({ error: 'Id, app name, and thresholds are required.' });
+    if (!id || !appId || warnlistThreshold == null || blacklistThreshold == null) {
+        return res.status(400).json({ error: 'Id, appId, and thresholds are required.' });
     }
 
     try {
         const updateQuery = `
             UPDATE users_apps 
             SET warnlist_threshold = ?, blacklist_threshold = ?
-            WHERE creator_id = ? AND app_name = ?
+            WHERE creator_id = ? AND id = ?
         `;
         const result = await new Promise((resolve, reject) => {
-            db.query(updateQuery, [warnlistThreshold, blacklistThreshold, id, appName], (err, results) => {
+            db.query(updateQuery, [warnlistThreshold, blacklistThreshold, id, appId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results);
             });
@@ -224,20 +225,77 @@ appRouter.patch('/update-thresholds', standardLimiter, authenticateTokenWithId, 
     }
 });
 
+// Endpoint to update app domains
+appRouter.put('/update-domains', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId, domains } = req.body;
+
+    if (!id || !appId || !domains || !Array.isArray(domains) || domains.length === 0) {
+        return res.status(400).json({ error: 'User id, app id, and domains are required.' });
+    }
+
+    if (domains.length > 30) {
+        return res.status(400).json({ error: 'A maximum of 30 domains is allowed.' });
+    }
+
+    try {
+        // Verify that the app exists and belongs to the user
+        const checkAppQuery = 'SELECT id FROM users_apps WHERE id = ? AND creator_id = ?';
+        const existingApp = await new Promise((resolve, reject) => {
+            db.query(checkAppQuery, [appId, id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!existingApp) {
+            return res.status(404).json({ error: 'App not found or does not belong to user.' });
+        }
+
+        // Delete all existing domains for this app
+        const deleteDomainQuery = 'DELETE FROM users_apps_domains WHERE app_id = ?';
+        await new Promise((resolve, reject) => {
+            db.query(deleteDomainQuery, [appId], (err) => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+
+        // Insert new domains
+        const insertDomainQuery = 'INSERT INTO users_apps_domains (app_id, domain) VALUES (?, ?)';
+        for (const domain of domains) {
+            await new Promise((resolve, reject) => {
+                db.query(insertDomainQuery, [appId, domain], (err) => {
+                    if (err) return reject(err);
+                    resolve();
+                });
+            });
+        }
+
+        res.status(200).json({
+            message: 'Domains updated successfully.',
+            updatedDomains: domains
+        });
+    } catch (error) {
+        console.error('Error updating app domains:', error);
+        res.status(500).json({ error: 'An error occurred while updating the domains: ' + error.message });
+    }
+});
+
 // Endpoint to delete an app
 appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id, appName } = req.body;
+    const { id, appId } = req.body;
 
-    if (!id || !appName) {
+    if (!id || !appId) {
         return res.status(400).json({ error: 'Id and app name are required.' });
     }
 
     try {
         // Fetch app ID
-        const appQuery = 'SELECT id FROM users_apps WHERE creator_id = ? AND app_name = ?';
+        const appQuery = 'SELECT app_name FROM users_apps WHERE creator_id = ? AND id = ?';
         const app = await new Promise((resolve, reject) => {
-            db.query(appQuery, [id, appName], (err, results) => {
+            db.query(appQuery, [id, appId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results[0]);
             });
@@ -247,7 +305,7 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
             return res.status(404).json({ error: 'App not found.' });
         }
 
-        const appId = app.id;
+        const appName = app.app_name;
 
         // Fetch user's database connection details
         const dbDetails = await getUserDatabaseDetails(db, id);
@@ -278,6 +336,27 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
     } catch (error) {
         console.error('Error deleting app:', error);
         res.status(500).json({ error: 'An error occurred while deleting the app.' });
+    }
+});
+
+// Reset the monthly_report_count to 0 at the start of each month
+cron.schedule('0 0 1 * *', async () => {
+    console.log('Running monthly report count reset...');
+    const db = getDB();
+
+    try {
+        const resetQuery = 'UPDATE users_apps SET monthly_report_count = 0';
+
+        await new Promise((resolve, reject) => {
+            db.query(resetQuery, (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
+        });
+
+        console.log('Successfully reset monthly report counts');
+    } catch (error) {
+        console.error('Error resetting monthly report counts:', error);
     }
 });
 

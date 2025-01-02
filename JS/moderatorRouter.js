@@ -7,17 +7,17 @@ const { standardLimiter } = require('./rateLimiting.js');
 // Get moderators of a specific app
 moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id: userId, appName } = req.body; // Include the appName in the request body
+    const { id: userId, appId } = req.body; // Include the appName in the request body
 
-    if (!appName) {
-        return res.status(400).json({ error: 'App name is required.' });
+    if (!appId) {
+        return res.status(400).json({ error: 'App Id is required.' });
     }
 
     try {
         // Verify the app belongs to the authenticated user
-        const appQuery = 'SELECT id FROM users_apps WHERE app_name = ? AND creator_id = ?';
+        const appQuery = 'SELECT id FROM users_apps WHERE id = ? AND creator_id = ?';
         const app = await new Promise((resolve, reject) => {
-            db.query(appQuery, [appName, userId], (err, results) => {
+            db.query(appQuery, [appId, userId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results[0]);
             });
@@ -35,16 +35,13 @@ moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, asy
             WHERE am.app_id = ?
         `;
         const moderators = await new Promise((resolve, reject) => {
-            db.query(moderatorsQuery, [app.id], (err, results) => {
+            db.query(moderatorsQuery, [appId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results);
             });
         });
 
-        res.json({
-            appName,
-            moderators: moderators.map(moderator => moderator.email),
-        });
+        res.json({ moderators: moderators.map(moderator => moderator.email) });
     } catch (error) {
         console.error('Error retrieving moderators:', error);
         res.status(500).json({ error: 'An error occurred while retrieving moderators.' });
@@ -55,10 +52,10 @@ moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, asy
 // Add a moderator to an app
 moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id: userId, appName, email } = req.body; // Include these 2 properties in the request body
+    const { id: userId, appId, email } = req.body; // Include these 2 properties in the request body
 
-    if (!appName || !email) {
-        return res.status(400).json({ error: 'App name and email are required.' });
+    if (!appId || !email) {
+        return res.status(400).json({ error: 'App Id and email are required.' });
     }
 
     try {
@@ -70,10 +67,10 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
                 u.moderator_limit
             FROM users_apps ua
             JOIN users u ON ua.creator_id = u.id
-            WHERE ua.app_name = ? AND ua.creator_id = ?
+            WHERE ua.id = ? AND ua.creator_id = ?
         `;
         const app = await new Promise((resolve, reject) => {
-            db.query(appQuery, [appName, userId], (err, results) => {
+            db.query(appQuery, [appId, userId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results[0]);
             });
@@ -103,7 +100,7 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
         // Check if the user is already a moderator for the app
         const checkModeratorQuery = 'SELECT id FROM apps_moderators WHERE app_id = ? AND user_id = ?';
         const existingModerator = await new Promise((resolve, reject) => {
-            db.query(checkModeratorQuery, [app.app_id, user.id], (err, results) => {
+            db.query(checkModeratorQuery, [appId, user.id], (err, results) => {
                 if (err) return reject(err);
                 resolve(results[0]);
             });
@@ -116,7 +113,7 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
         // Add the user as a moderator
         const insertModeratorQuery = 'INSERT INTO apps_moderators (app_id, user_id) VALUES (?, ?)';
         await new Promise((resolve, reject) => {
-            db.query(insertModeratorQuery, [app.app_id, user.id], (err) => {
+            db.query(insertModeratorQuery, [appId, user.id], (err) => {
                 if (err) return reject(err);
                 resolve();
             });
@@ -125,7 +122,7 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
         // Increment the moderator count for the app
         const updateModeratorCountQuery = 'UPDATE users_apps SET moderator_count = moderator_count + 1 WHERE id = ?';
         await new Promise((resolve, reject) => {
-            db.query(updateModeratorCountQuery, [app.app_id], (err) => {
+            db.query(updateModeratorCountQuery, [appId], (err) => {
                 if (err) return reject(err);
                 resolve();
             });
@@ -141,17 +138,17 @@ moderatorRouter.post('/add', standardLimiter, authenticateTokenWithId, async (re
 // Remove a moderator from an app
 moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id: userId, appName, email } = req.body; // Include these 2 properties in the request body
+    const { id: userId, appId, email } = req.body; // Include these 2 properties in the request body
 
-    if (!appName || !email) {
-        return res.status(400).json({ error: 'App name and email are required.' });
+    if (!appId || !email) {
+        return res.status(400).json({ error: 'App Id and email are required.' });
     }
 
     try {
         // Get the app ID
-        const appQuery = 'SELECT id AS app_id, creator_id FROM users_apps WHERE app_name = ? AND creator_id = ?';
+        const appQuery = 'SELECT app_name FROM users_apps WHERE id = ? AND creator_id = ?';
         const app = await new Promise((resolve, reject) => {
-            db.query(appQuery, [appName, userId], (err, results) => {
+            db.query(appQuery, [appId, userId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results[0]);
             });
@@ -177,7 +174,7 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
         // Remove the user as a moderator
         const deleteModeratorQuery = 'DELETE FROM apps_moderators WHERE app_id = ? AND user_id = ?';
         const result = await new Promise((resolve, reject) => {
-            db.query(deleteModeratorQuery, [app.app_id, user.id], (err, results) => {
+            db.query(deleteModeratorQuery, [appId, user.id], (err, results) => {
                 if (err) return reject(err);
                 resolve(results);
             });
@@ -190,7 +187,7 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
         // Decrement the moderator count for the app
         const updateModeratorCountQuery = 'UPDATE users_apps SET moderator_count = moderator_count - 1 WHERE id = ?';
         await new Promise((resolve, reject) => {
-            db.query(updateModeratorCountQuery, [app.app_id], (err) => {
+            db.query(updateModeratorCountQuery, [appId], (err) => {
                 if (err) return reject(err);
                 resolve();
             });
