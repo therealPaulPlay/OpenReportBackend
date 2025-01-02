@@ -295,7 +295,7 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         // Fetch paginated results
         const getQuery = `
             SELECT * FROM \`${app.app_name}_${table}\`
-            ORDER BY timestamp DESC
+            ORDER BY timestamp DESC, id DESC
             LIMIT ${offset}, ${limit};
         `;
         const results = await executeOnUserDatabase(dbDetails, getQuery, []);
