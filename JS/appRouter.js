@@ -23,6 +23,7 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
                 ua.warnlist_threshold,
                 ua.blacklist_threshold,
                 ua.monthly_report_count,
+                ua.api_key,
                 CASE 
                     WHEN ua.creator_id = ? THEN true
                     ELSE false
