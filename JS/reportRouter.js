@@ -43,6 +43,7 @@ async function verifyAppByKey(db, key) {
 reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) => {
     const { key, referenceId, type, reason, notes, link } = req.body;
     const reporterIp = req.clientIp;
+    const referrer = req.get('Referer'); // Yes, this HTTP header was misspelled
 
     if (!key || !referenceId || !type) {
         return res.status(400).json({ error: 'Key, referenceId, and type are required.' });
@@ -53,45 +54,65 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
 
         // Verify app and fetch details
         const app = await verifyAppByKey(db, key);
-        if (!app) {
-            return res.status(404).json({ error: 'App not found.' });
-        }
+        if (!app) return res.status(404).json({ error: 'App not found.' });
+        if (app.monthly_report_count >= app.report_limit) return res.status(429).json({ error: 'Monthly report limit exceeded for this app.' });
 
-        if (app.monthly_report_count >= app.report_limit) {
-            return res.status(429).json({ error: 'Monthly report limit exceeded for this app.' });
-        }
+        // Check domain restrictions
+        if (referrer) {
+            try {
+                const domain = new URL(referrer).hostname;
+                const domainCheckQuery = `
+                    SELECT COUNT(*) as count 
+                    FROM users_apps_domains 
+                    WHERE app_id = ? AND domain = ?
+                `;
 
-        const { app_id, app_name, creator_id, warnlist_threshold, blacklist_threshold, report_limit, monthly_report_count } = app;
+                const [domainResult] = await new Promise((resolve, reject) => {
+                    db.query(domainCheckQuery, [app.app_id, domain], (err, results) => {
+                        if (err) return reject(err);
+                        resolve(results);
+                    });
+                });
+
+                if (domainResult.count === 0) {
+                    return res.status(403).json({ error: 'Domain not authorized for this app.' });
+                }
+            } catch (urlError) {
+                return res.status(400).json({ error: 'Invalid referrer URL: ' + urlError });
+            }
+        }
 
         // Fetch user database connection details
-        const dbDetails = await getUserDatabaseDetails(db, creator_id);
+        const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
 
         // Prevent duplicate reports by IP for the same type and referenceId
         const duplicateCheckQuery = `
             SELECT COUNT(*) AS count
-            FROM \`${app_name}_reports\`
-            WHERE type = ? AND referenceId = ? AND reporterIp = ?;
+            FROM \`${app.app_name}_reports\`
+            WHERE type = ? AND referenceId = ? AND reporterIp = ?
+            LIMIT 1;
         `;
-        const duplicateCheck = await executeOnUserDatabase(
+
+        const duplicateResult = await executeOnUserDatabase(
             dbDetails,
             duplicateCheckQuery,
-            [type, referenceId, reporterIp]
+            [type.trim(), referenceId.trim(), reporterIp.trim()]
         );
 
-        if (duplicateCheck.count > 0) {
+        if (duplicateResult[0].count > 0) {
             return res.status(409).json({ error: 'Please only submit the same content once.' });
         }
 
         // Insert the new report
         const insertReportQuery = `
-            INSERT INTO \`${app_name}_reports\`
+            INSERT INTO \`${app.app_name}_reports\`
             (referenceId, type, reason, notes, link, reporterIp, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, NOW());
         `;
         await executeOnUserDatabase(
             dbDetails,
             insertReportQuery,
-            [referenceId, type, reason || null, notes || null, link || null, reporterIp]
+            [referenceId.trim(), type.trim(), reason || null, notes || null, link || null, reporterIp.trim()]
         );
 
         // Update the monthly report count
@@ -99,62 +120,70 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
             UPDATE users_apps SET monthly_report_count = monthly_report_count + 1 WHERE id = ?;
         `;
         await new Promise((resolve, reject) => {
-            db.query(updateReportCountQuery, [app.id], (err) => {
+            db.query(updateReportCountQuery, [app.app_id], (err) => {
                 if (err) return reject(err);
                 resolve();
             });
         });
 
-        // Check if warnlist or blacklist thresholds are exceeded --------------------
+        // Check if warnlist or blacklist thresholds are exceeded
         const countQuery = `
             SELECT COUNT(*) AS count
-            FROM \`${app_name}_reports\`
+            FROM \`${app.app_name}_reports\`
             WHERE type = ? AND referenceId = ?;
         `;
         const countResult = await executeOnUserDatabase(
             dbDetails,
             countQuery,
-            [type, referenceId]
+            [type.trim(), referenceId.trim()]
         );
 
-        if (countResult.count >= warnlist_threshold) {
+        if (countResult[0].count >= app.warnlist_threshold) {
             const warnlistCheckQuery = `
                 SELECT COUNT(*) AS count
-                FROM \`${app_name}_warnlist\`
+                FROM \`${app.app_name}_warnlist\`
                 WHERE referenceId = ? AND type = ?;
             `;
-            const warnlistCheck = await executeOnUserDatabase(dbDetails, warnlistCheckQuery, [referenceId, type]);
+            const warnlistCheck = await executeOnUserDatabase(
+                dbDetails,
+                warnlistCheckQuery,
+                [referenceId.trim(), type.trim()]
+            );
 
-            if (warnlistCheck.count === 0) {
+            if (warnlistCheck[0].count === 0) {
                 const warnlistInsertQuery = `
-                    INSERT INTO \`${app_name}_warnlist\` (referenceId, type, reason, link, timestamp)
+                    INSERT INTO \`${app.app_name}_warnlist\` (referenceId, type, reason, link, timestamp)
                     VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
                     dbDetails,
                     warnlistInsertQuery,
-                    [referenceId, type, reason || null, link || null]
+                    [referenceId.trim(), type.trim(), reason || null, link || null]
                 );
             }
         }
 
-        if (countResult.count >= blacklist_threshold) {
+        if (countResult[0].count >= app.blacklist_threshold) {
             const blacklistCheckQuery = `
                 SELECT COUNT(*) AS count
-                FROM \`${app_name}_blacklist\`
+                FROM \`${app.app_name}_blacklist\`
                 WHERE referenceId = ? AND type = ?;
             `;
-            const blacklistCheck = await executeOnUserDatabase(dbDetails, blacklistCheckQuery, [referenceId, type]);
+            const blacklistCheck = await executeOnUserDatabase(
+                dbDetails,
+                blacklistCheckQuery,
+                [referenceId.trim(), type.trim()]
+            );
 
-            if (blacklistCheck.count === 0) {
+            if (blacklistCheck[0].count === 0) {
                 const blacklistInsertQuery = `
-                    INSERT INTO \`${app_name}_blacklist\` (referenceId, type, reason, link, timestamp)
+                    INSERT INTO \`${app.app_name}_blacklist\` (referenceId, type, reason, link, timestamp)
                     VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
                     dbDetails,
                     blacklistInsertQuery,
-                    [referenceId, type, reason || null, link || null]
+                    [referenceId.trim(), type.trim(), reason || null, link || null]
                 );
             }
         }
