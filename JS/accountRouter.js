@@ -55,8 +55,12 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
     userName = userName.trim(); // Remove whitespaces from username
     email = email.trim().toLowerCase(); // Remove whitespaces from email and lowercase
 
-    if (userName.length < 4) {
-        return res.status(400).json({ error: "Username is too short." });
+    if (userName.length < 4 || email.length < 5) {
+        return res.status(400).json({ error: "Username or email are too short." });
+    }
+
+    if (userName.length > 50 || email.length > 100) {
+        return res.status(400).json({ error: "Username or email are too long." });
     }
 
     try {
