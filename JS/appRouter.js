@@ -131,31 +131,31 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         const tableQueries = [
             `CREATE TABLE IF NOT EXISTS ${appName}_reports (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                referenceId VARCHAR(255) NOT NULL,
+                reference_id VARCHAR(255) NOT NULL,
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 notes TEXT,
                 link VARCHAR(255),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                reporterIp VARCHAR(45) NOT NULL
+                reporter_ip VARCHAR(45) NOT NULL
             )`,
             `CREATE TABLE IF NOT EXISTS ${appName}_warnlist (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                referenceId VARCHAR(255) NOT NULL,
+                reference_id VARCHAR(255) NOT NULL,
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                UNIQUE KEY unique_type_reference (type, referenceId)
+                UNIQUE KEY unique_type_reference (type, reference_id)
             )`,
             `CREATE TABLE IF NOT EXISTS ${appName}_blacklist (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                referenceId VARCHAR(255) NOT NULL,
+                reference_id VARCHAR(255) NOT NULL,
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                UNIQUE KEY unique_type_reference (type, referenceId)
+                UNIQUE KEY unique_type_reference (type, reference_id)
             )`,
         ];
 
@@ -167,18 +167,18 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         const indexQueries = [
             `CREATE INDEX idx_reports_type ON ${appName}_reports(type);`,
             `CREATE INDEX idx_reports_timestamp ON ${appName}_reports(timestamp DESC);`,
-            `CREATE INDEX idx_reports_referenceId ON ${appName}_reports(referenceId);`,
-            `CREATE FULLTEXT INDEX idx_reports_fulltext ON ${appName}_reports(referenceId, type, reason, notes, link, reporterIp);`,
+            `CREATE INDEX idx_reports_reference_id ON ${appName}_reports(reference_id);`,
+            `CREATE FULLTEXT INDEX idx_reports_fulltext ON ${appName}_reports(reference_id, type, reason, notes, link, reporter_ip);`,
 
             `CREATE INDEX idx_warnlist_type ON ${appName}_warnlist(type);`,
             `CREATE INDEX idx_warnlist_timestamp ON ${appName}_warnlist(timestamp DESC);`,
-            `CREATE INDEX idx_warnlist_referenceId ON ${appName}_warnlist(referenceId);`,
-            `CREATE FULLTEXT INDEX idx_warnlist_fulltext ON ${appName}_warnlist(referenceId, type, reason);`,
+            `CREATE INDEX idx_warnlist_reference_id ON ${appName}_warnlist(reference_id);`,
+            `CREATE FULLTEXT INDEX idx_warnlist_fulltext ON ${appName}_warnlist(reference_id, type, reason, link);`,
 
             `CREATE INDEX idx_blacklist_type ON ${appName}_blacklist(type);`,
             `CREATE INDEX idx_blacklist_timestamp ON ${appName}_blacklist(timestamp DESC);`,
-            `CREATE INDEX idx_blacklist_referenceId ON ${appName}_blacklist(referenceId);`,
-            `CREATE FULLTEXT INDEX idx_blacklist_fulltext ON ${appName}_blacklist(referenceId, type, reason);`
+            `CREATE INDEX idx_blacklist_reference_id ON ${appName}_blacklist(reference_id);`,
+            `CREATE FULLTEXT INDEX idx_blacklist_fulltext ON ${appName}_blacklist(reference_id, type, reason, link);`
         ];
 
         for (const query of indexQueries) {

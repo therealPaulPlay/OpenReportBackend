@@ -89,7 +89,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         const duplicateCheckQuery = `
             SELECT COUNT(*) AS count
             FROM \`${app.app_name}_reports\`
-            WHERE type = ? AND referenceId = ? AND reporterIp = ?
+            WHERE type = ? AND reference_id = ? AND reporter_ip = ?
             LIMIT 1;
         `;
 
@@ -106,7 +106,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         // Insert the new report
         const insertReportQuery = `
             INSERT INTO \`${app.app_name}_reports\`
-            (referenceId, type, reason, notes, link, reporterIp, timestamp)
+            (reference_id, type, reason, notes, link, reporter_ip, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, NOW());
         `;
         await executeOnUserDatabase(
@@ -130,7 +130,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         const countQuery = `
             SELECT COUNT(*) AS count
             FROM \`${app.app_name}_reports\`
-            WHERE type = ? AND referenceId = ?;
+            WHERE type = ? AND reference_id = ?;
         `;
         const countResult = await executeOnUserDatabase(
             dbDetails,
@@ -142,7 +142,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
             const warnlistCheckQuery = `
                 SELECT COUNT(*) AS count
                 FROM \`${app.app_name}_warnlist\`
-                WHERE referenceId = ? AND type = ?;
+                WHERE reference_id = ? AND type = ?;
             `;
             const warnlistCheck = await executeOnUserDatabase(
                 dbDetails,
@@ -152,7 +152,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
 
             if (warnlistCheck[0].count === 0) {
                 const warnlistInsertQuery = `
-                    INSERT INTO \`${app.app_name}_warnlist\` (referenceId, type, reason, link, timestamp)
+                    INSERT INTO \`${app.app_name}_warnlist\` (reference_id, type, reason, link, timestamp)
                     VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
@@ -167,7 +167,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
             const blacklistCheckQuery = `
                 SELECT COUNT(*) AS count
                 FROM \`${app.app_name}_blacklist\`
-                WHERE referenceId = ? AND type = ?;
+                WHERE reference_id = ? AND type = ?;
             `;
             const blacklistCheck = await executeOnUserDatabase(
                 dbDetails,
@@ -177,7 +177,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
 
             if (blacklistCheck[0].count === 0) {
                 const blacklistInsertQuery = `
-                    INSERT INTO \`${app.app_name}_blacklist\` (referenceId, type, reason, link, timestamp)
+                    INSERT INTO \`${app.app_name}_blacklist\` (reference_id, type, reason, link, timestamp)
                     VALUES (?, ?, ?, ?, NOW());
                 `;
                 await executeOnUserDatabase(
@@ -243,7 +243,7 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
 
         // Prevent duplicates
         const duplicateCheckQuery = `
-            SELECT COUNT(*) AS count FROM \`${app_name}_${table}\` WHERE referenceId = ? AND type = ?;
+            SELECT COUNT(*) AS count FROM \`${app_name}_${table}\` WHERE reference_id = ? AND type = ?;
         `;
         const duplicateCheck = await executeOnUserDatabase(dbDetails, duplicateCheckQuery, [referenceId, type]);
 
@@ -253,7 +253,7 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
 
         // Insert into blacklist
         const insertQuery = `
-            INSERT INTO \`${app_name}_${table}\` (referenceId, type, reason, link)
+            INSERT INTO \`${app_name}_${table}\` (reference_id, type, reason, link)
             VALUES (?, ?, ?, ?);
         `;
         await executeOnUserDatabase(dbDetails, insertQuery, [referenceId, type, reason || null, link || null]);
@@ -325,11 +325,11 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         let searchQuery = '';
         if (search) {
             const sanitizedSearch = search.replace(/'/g, "\\'"); // Escape single quotes for safety
-            const extraReportTables = table == "reports" ? ", notes, link, reporterIp" : ""; // Include more columns if its the reports table
+            const extraReportTables = table == "reports" ? ", notes, reporter_ip" : ""; // Include more columns if its the reports table
 
             // Use MATCH AGAINST for full-text search
             searchQuery = `
-                AND MATCH(referenceId, type, reason${extraReportTables})
+                AND MATCH(reference_id, type, reason, link${extraReportTables})
                 AGAINST ('${sanitizedSearch}' IN BOOLEAN MODE)
             `;
         }
