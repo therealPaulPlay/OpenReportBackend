@@ -1,6 +1,6 @@
 const express = require('express');
 const subscriptionRouter = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripeLib = require('stripe');
 const { standardLimiter, registerLimiter, loginLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
@@ -9,6 +9,14 @@ const { sendMail } = require('./sendEmails.js');
 // Default limits
 const DEFAULT_REPORT_LIMIT = 2500;
 const DEFAULT_MODERATOR_LIMIT = 10;
+
+let stripe;
+
+try {
+    stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
+} catch (error) {
+    console.error("Stripe initialization failed:", error);
+}
 
 // Helper function to update user limits
 async function updateUserLimits(userId, reportLimit, moderatorLimit, subscriptionTier) {
