@@ -299,9 +299,9 @@ reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (r
     }
 });
 
-// Get entries
+// Get entries with optional search
 reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (req, res) => {
-    const { id, appId, table, page = 1 } = req.body;
+    const { id, appId, table, page = 1, search = '' } = req.body;
 
     if (!['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
         return res.status(400).json({ error: 'Valid table and appId are required.' });
@@ -321,13 +321,25 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         const limit = 50;
         const offset = (Number(page) - 1) * limit;
 
-        // Fetch paginated results
+        // Build the query for searching
+        let searchQuery = '';
+        if (search) {
+            // Use MATCH AGAINST for full-text search
+            searchQuery = `
+                AND MATCH(referenceId, type, reason, notes, link, reporterIp)
+                AGAINST ('${search}' IN BOOLEAN MODE)
+            `;
+        }
+
+        // Fetch paginated results with optional search
         const getQuery = `
             SELECT * FROM \`${app.app_name}_${table}\`
+            WHERE 1 ${searchQuery}
             ORDER BY timestamp DESC, id DESC
             LIMIT ${offset}, ${limit};
         `;
-        const results = await executeOnUserDatabase(dbDetails, getQuery, []);
+
+        const results = await executeOnUserDatabase(dbDetails, getQuery);
 
         res.status(200).json({ data: results });
     } catch (error) {

@@ -163,19 +163,22 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             await executeOnUserDatabase(dbDetails, query);
         }
 
-        // Now, add indexes after tables are created
+        // Now, add indexes after tables are created. Fulltext indexes improve search speed.
         const indexQueries = [
             `CREATE INDEX idx_reports_type ON ${appName}_reports(type);`,
             `CREATE INDEX idx_reports_timestamp ON ${appName}_reports(timestamp DESC);`,
             `CREATE INDEX idx_reports_referenceId ON ${appName}_reports(referenceId);`,
+            `CREATE FULLTEXT INDEX idx_reports_fulltext ON ${appName}_reports(referenceId, type, reason, notes, link, reporterIp);`,
 
             `CREATE INDEX idx_warnlist_type ON ${appName}_warnlist(type);`,
             `CREATE INDEX idx_warnlist_timestamp ON ${appName}_warnlist(timestamp DESC);`,
             `CREATE INDEX idx_warnlist_referenceId ON ${appName}_warnlist(referenceId);`,
+            `CREATE FULLTEXT INDEX idx_warnlist_fulltext ON ${appName}_warnlist(referenceId, type, reason, notes, link, reporterIp);`,
 
             `CREATE INDEX idx_blacklist_type ON ${appName}_blacklist(type);`,
             `CREATE INDEX idx_blacklist_timestamp ON ${appName}_blacklist(timestamp DESC);`,
-            `CREATE INDEX idx_blacklist_referenceId ON ${appName}_blacklist(referenceId);`
+            `CREATE INDEX idx_blacklist_referenceId ON ${appName}_blacklist(referenceId);`,
+            `CREATE FULLTEXT INDEX idx_blacklist_fulltext ON ${appName}_blacklist(referenceId, type, reason, notes, link, reporterIp);`
         ];
 
         for (const query of indexQueries) {

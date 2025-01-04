@@ -234,6 +234,7 @@ This router handles reporting functionalities for apps, including submission, de
      - `appId` (number): The ID of the app.
      - `table` (string): The name of the table ("reports", "warnlist", "blacklist").
      - `page` (number): The page number for pagination.
+     - `search` (string): Optional search parameter.
 
 ---
 
