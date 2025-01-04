@@ -116,10 +116,11 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
         // Create a new checkout session with automatic tax
         const session = await stripe.checkout.sessions.create({
             customer: customer.id,
-            billing_address_collection: 'auto',
+            billing_address_collection: 'auto', // Allow auto-collection of billing address
             automatic_tax: {
                 enabled: true, // Enable automatic tax
             },
+            payment_method_types: ['card', 'paypal'], // Include PayPal as a payment method
             line_items: [
                 {
                     price: prices.data[0].id,
@@ -129,6 +130,9 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             mode: 'subscription',
             success_url: `${process.env.SITE_DOMAIN}?success=true`,
             cancel_url: `${process.env.SITE_DOMAIN}?cancel=true`,
+            customer_update: {
+                address: 'auto',
+            },
         });
 
         res.json({ url: session.url });
