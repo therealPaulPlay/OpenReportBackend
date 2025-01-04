@@ -324,9 +324,12 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         // Build the query for searching
         let searchQuery = '';
         if (search) {
+            // Include more columns if its the reports table
+            const extraReportTables = table == "reports" ? ", notes, link, reporterIp" : "";
+            
             // Use MATCH AGAINST for full-text search
             searchQuery = `
-                AND MATCH(referenceId, type, reason, notes, link, reporterIp)
+                AND MATCH(referenceId, type, reason${extraReportTables})
                 AGAINST ('${search}' IN BOOLEAN MODE)
             `;
         }
