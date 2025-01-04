@@ -237,6 +237,34 @@ This router handles reporting functionalities for apps, including submission, de
 
 ---
 
+**### `/subscription` Router**
+This router handles subscription management through Stripe.
+**#### Endpoints:**
+1. **POST `/create-checkout-session`**
+- **Body**:
+```json
+{
+    "id": "number",
+    "lookup_key": "string"
+}
+```
+2. **POST `/create-portal-session`**
+- **Body**:
+```json
+{
+    "id": "number"
+}
+```
+3. **POST `/webhook`**
+- **Body**: Raw Stripe webhook payload
+- **Headers**:
+```json
+{
+    "stripe-signature": "string"
+}
+```
+---
+
 ## MySQL Database Setup
 
 The application uses several tables to store user, app, and moderation-related data.
@@ -244,15 +272,16 @@ The application uses several tables to store user, app, and moderation-related d
 ### Tables
 
 #### `users`
-| Column         | Type         | Nullable | Key        | Additional Info            |
-|----------------|--------------|----------|------------|----------------------------|
-| id             | INT          | NO       | PRIMARY    | AUTO_INCREMENT             |
-| created_at     | DATETIME(6)  | YES      |            |                            |
-| email          | VARCHAR(255) | YES      | UNIQUE     | Consider indexing this     |
-| password       | VARCHAR(255) | YES      |            |                            |
-| user_name      | VARCHAR(255) | NO       |            |                            |
-| moderator_limit| INT          | NO       |            |                            |
-| report_limit   | INT          | NO       |            |                            |
+| Column             | Type         | Nullable | Key        | Additional Info            |
+|--------------------|--------------|----------|------------|----------------------------|
+| id                 | INT          | NO       | PRIMARY    | AUTO_INCREMENT             |
+| created_at         | DATETIME(6)  | YES      |            |                            |
+| email              | VARCHAR(255) | YES      | UNIQUE     | Consider indexing this     |
+| password           | VARCHAR(255) | YES      |            |                            |
+| user_name          | VARCHAR(255) | NO       |            |                            |
+| report_limit       | INT          | NO       |            |                            |
+| moderator_limit    | INT          | NO       |            |                            |
+| stripe_customer_id | INT          | NO       |            |                            |
 
 #### `users_databases`
 | Column       | Type         | Nullable | Key        | Additional Info            |

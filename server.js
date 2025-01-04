@@ -11,6 +11,7 @@ const userDatabaseRouter = require("./JS/userDatabaseRouter.js");
 const appRouter = require("./JS/appRouter.js");
 const moderatorRouter = require("./JS/moderatorRouter.js");
 const reportRouter = require("./JS/reportRouter.js");
+const subscriptionRouter = require("./JS/subscriptionRouter.js");
 
 // Function imports
 const { connectDB } = require("./JS/connectDB.js");
@@ -33,7 +34,13 @@ app.use(cors({
 }));
 
 // Middleware
-app.use(bodyParser.json());
+app.use((req, res, next) => {
+    if (req.originalUrl === '/subscription/webhook') {
+        next(); // Skip body-parser for Stripe Webhook
+    } else {
+        bodyParser.json()(req, res, next); // Use body-parser for all other routes
+    }
+});
 app.use(requestIp.mw());
 app.use(xss());
 
@@ -47,6 +54,7 @@ app.use("/user-database", userDatabaseRouter);
 app.use("/app", appRouter);
 app.use("/moderator", moderatorRouter);
 app.use("/report", reportRouter)
+app.use(("/subscription", subscriptionRouter))
 
 // Health check
 app.get('/health', (req, res) => {
