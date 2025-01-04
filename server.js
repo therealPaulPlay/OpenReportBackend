@@ -25,8 +25,8 @@ app.use(cors({
             /^\/.*\/$/.test(o) ? new RegExp(o.slice(1, -1)) : o
         );
 
-        if (corsOrigins.some(pattern => typeof pattern === 'string' ? pattern === origin : pattern.test(origin))) {
-            callback(null, true);
+        if (!origin || corsOrigins.some(pattern => typeof pattern === 'string' ? pattern === origin : pattern.test(origin))) {
+            callback(null, true); // Allow requests without an origin (e.g., webhooks), otherwise check if it is matching
         } else {
             callback(new Error('Not allowed by CORS'));
         }
@@ -46,7 +46,6 @@ app.use(xss());
 
 // Database Connection
 connectDB();
-
 
 // Routers
 app.use("/account", accountRouter)
