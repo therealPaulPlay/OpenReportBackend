@@ -1,7 +1,8 @@
 const express = require('express');
 const subscriptionRouter = express.Router();
+
 const stripeLib = require('stripe');
-const { standardLimiter, registerLimiter, loginLimiter } = require("./rateLimiting.js");
+const { standardLimiter } = require("./rateLimiting.js");
 const { authenticateTokenWithId } = require("./authUtils.js");
 const { getDB } = require("./connectDB.js");
 const { sendMail } = require('./sendEmails.js');
@@ -122,7 +123,7 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
         res.redirect(303, session.url);
     } catch (error) {
         console.error('Error creating checkout session:', error);
-        res.status(500).json({ error: 'Failed to create checkout session' });
+        res.status(500).json({ error: 'Failed to create checkout session.' });
     }
 });
 
@@ -138,7 +139,7 @@ subscriptionRouter.post('/create-portal-session', standardLimiter, authenticateT
         });
 
         if (!user.stripe_customer_id) {
-            return res.status(400).json({ error: 'No subscription found' });
+            return res.status(400).json({ error: 'No active subscription found.' });
         }
 
         const portalSession = await stripe.billingPortal.sessions.create({
@@ -149,7 +150,7 @@ subscriptionRouter.post('/create-portal-session', standardLimiter, authenticateT
         res.redirect(303, portalSession.url);
     } catch (error) {
         console.error('Error creating portal session:', error);
-        res.status(500).json({ error: 'Failed to create portal session' });
+        res.status(500).json({ error: 'Failed to create portal session.' });
     }
 });
 

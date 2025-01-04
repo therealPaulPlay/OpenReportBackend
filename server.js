@@ -53,8 +53,8 @@ app.use("/account", accountRouter)
 app.use("/user-database", userDatabaseRouter);
 app.use("/app", appRouter);
 app.use("/moderator", moderatorRouter);
-app.use("/report", reportRouter)
-app.use(("/subscription", subscriptionRouter))
+app.use("/report", reportRouter);
+app.use("/subscription", subscriptionRouter);
 
 // Health check
 app.get('/health', (req, res) => {
