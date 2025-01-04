@@ -281,7 +281,8 @@ The application uses several tables to store user, app, and moderation-related d
 | user_name          | VARCHAR(255) | NO       |            |                            |
 | report_limit       | INT          | NO       |            |                            |
 | moderator_limit    | INT          | NO       |            |                            |
-| stripe_customer_id | INT          | NO       |            |                            |
+| stripe_customer_id | VARCHAR(255) | NO       |            |                            |
+| subscription_tier  | INT          | NO       |            |                            |
 
 #### `users_databases`
 | Column       | Type         | Nullable | Key        | Additional Info            |
@@ -324,8 +325,8 @@ The application uses several tables to store user, app, and moderation-related d
 ### Recommendations
 
 1. **Indexing**:
-   - Index the `email` column in the `users` table for faster lookups.
-   - Index the `app_name` and `api_key` column in the `users_apps` table to improve performance.
+   - Index the `email` and `stripe_customer_id` columns in the `users` table for faster lookups.
+   - Index the `app_name` and `api_key` columns in the `users_apps` table to improve performance.
    - Index the `user_id` column in the `apps_moderators` table for efficient queries.
 
 2. **Foreign Key Constraints**:

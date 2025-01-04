@@ -11,11 +11,11 @@ const DEFAULT_REPORT_LIMIT = 2500;
 const DEFAULT_MODERATOR_LIMIT = 10;
 
 // Helper function to update user limits
-async function updateUserLimits(userId, reportLimit, moderatorLimit) {
+async function updateUserLimits(userId, reportLimit, moderatorLimit, subscriptionTier) {
     const db = getDB();
-    const updateQuery = 'UPDATE users SET report_limit = ?, moderator_limit = ? WHERE id = ?';
+    const updateQuery = 'UPDATE users SET report_limit = ?, moderator_limit = ?, subscription_tier = ? WHERE id = ?';
     return new Promise((resolve, reject) => {
-        db.query(updateQuery, [reportLimit, moderatorLimit, userId], (err, results) => {
+        db.query(updateQuery, [reportLimit, moderatorLimit, subscriptionTier, userId], (err, results) => {
             if (err) return reject(err);
             resolve(results);
         });
@@ -177,7 +177,8 @@ subscriptionRouter.post(
                         await updateUserLimits(
                             user.id,
                             parseInt(product.metadata.report_limit),
-                            parseInt(product.metadata.moderator_limit)
+                            parseInt(product.metadata.moderator_limit),
+                            parseInt(product.metadata.subscription_tier)
                         );
                     }
 
@@ -203,14 +204,16 @@ subscriptionRouter.post(
                         await updateUserLimits(
                             user.id,
                             parseInt(product.metadata.report_limit),
-                            parseInt(product.metadata.moderator_limit)
+                            parseInt(product.metadata.moderator_limit),
+                            parseInt(product.metadata.subscription_tier)
                         );
                     } else if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
                         // Reset to default limits
                         await updateUserLimits(
                             user.id,
                             DEFAULT_REPORT_LIMIT,
-                            DEFAULT_MODERATOR_LIMIT
+                            DEFAULT_MODERATOR_LIMIT,
+                            0
                         );
                     }
                     break;
