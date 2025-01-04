@@ -90,12 +90,9 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
         } else {
             customer = await stripe.customers.create({
                 email: user.email,
-                metadata: {
-                    user_id: id
-                }
+                metadata: { user_id: id },
             });
 
-            // Update user with Stripe customer ID
             await new Promise((resolve, reject) => {
                 db.query('UPDATE users SET stripe_customer_id = ? WHERE id = ?',
                     [customer.id, id],
@@ -106,9 +103,23 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             });
         }
 
+        // Check existing subscriptions and currency
+        const subscriptions = await stripe.subscriptions.list({
+            customer: customer.id,
+            status: 'active',
+        });
+
+        if (subscriptions.data.length > 0) {
+            return res.status(409).json({ error: "Please cancel your existing subscription first." });
+        }
+
+        // Create a new checkout session with automatic tax
         const session = await stripe.checkout.sessions.create({
             customer: customer.id,
             billing_address_collection: 'auto',
+            automatic_tax: {
+                enabled: true, // Enable automatic tax
+            },
             line_items: [
                 {
                     price: prices.data[0].id,
