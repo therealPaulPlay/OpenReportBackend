@@ -55,11 +55,12 @@ thank you for subscribing to OpenReport!
 
 Product: ${productName}
 Purchase ID: ${purchaseId}
+
 Amount: $${(amountTotal / 100).toFixed(2)}
 
-If you have any questions regarding the purchase, please do not hesitate to reach out through the contact form on https://paulplay.studio.
+If you have any questions regarding the purchase, please do not hesitate to reach out through the contact form on https://paulplay.studio. For tax information, please refer to https://paulplay.studio/imprint. 
 
-Make sure to also provide the Purchase ID. (This email was sent automatically, please do not reply directly).`
+(This email was sent automatically, please do not reply directly).`
     };
 
     await sendMail(mailOptions);
