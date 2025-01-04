@@ -120,7 +120,7 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             cancel_url: `${process.env.SITE_DOMAIN}?cancel=true`,
         });
 
-        res.redirect(303, session.url);
+        res.json({ url: session.url });
     } catch (error) {
         console.error('Error creating checkout session:', error);
         res.status(500).json({ error: 'Failed to create checkout session.' });
@@ -147,7 +147,7 @@ subscriptionRouter.post('/create-portal-session', standardLimiter, authenticateT
             return_url: process.env.SITE_DOMAIN,
         });
 
-        res.redirect(303, portalSession.url);
+        res.json({ url: portalSession.url });
     } catch (error) {
         console.error('Error creating portal session:', error);
         res.status(500).json({ error: 'Failed to create portal session.' });
