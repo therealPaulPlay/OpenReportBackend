@@ -129,6 +129,15 @@ This router manages user-created applications.
   }
   ```
 
+6. **PUT `/app-secret`**
+- **Body**:
+  ```json
+  {
+    "id": "number",
+    "appId": "number"
+  }
+  ```
+
 ---
 
 ### `/moderator` Router
