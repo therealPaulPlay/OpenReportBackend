@@ -354,10 +354,10 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
 // PUBLIC API
 // Get entry from warnlist or blacklist by reference ID
 reportRouter.put('/get-entry', standardLimiter, async (req, res) => {
-    const { appId, table, secret, referenceId } = req.body;
+    const { appId, table, type, secret, referenceId } = req.body;
 
-    if (!['warnlist', 'blacklist'].includes(table) || !appId || !secret || !referenceId) {
-        return res.status(400).json({ error: 'Valid table, secret, referenceId and appId are required.' });
+    if (!['warnlist', 'blacklist'].includes(table) || !appId || !secret || !referenceId || !type) {
+        return res.status(400).json({ error: 'Valid table, secret, referenceId, type and appId are required.' });
     }
 
     try {
@@ -384,11 +384,11 @@ reportRouter.put('/get-entry', standardLimiter, async (req, res) => {
         // Fetch paginated results with optional search
         const getQuery = `
             SELECT * FROM \`${app.app_name}_${table}\`
-            WHERE reference_id = ?
+            WHERE reference_id = ? AND type = ?
             LIMIT 1;
         `;
 
-        const results = await executeOnUserDatabase(dbDetails, getQuery, [referenceId]);
+        const results = await executeOnUserDatabase(dbDetails, getQuery, [referenceId, type]);
 
         res.status(200).json({ data: results });
     } catch (error) {

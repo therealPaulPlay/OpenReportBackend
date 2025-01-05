@@ -256,6 +256,7 @@ This router handles reporting functionalities for apps, including submission, de
     {
      "appId": "number",
      "table": "string",
+     "type": "string",
      "referenceId": "string",
      "secret": "string"
     }
