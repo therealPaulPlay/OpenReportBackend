@@ -158,7 +158,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             return res.status(404).json({ error: 'Database connection details not found for user.' });
         }
 
-        // Create required tables in user's database !TODO add index on type, timestamp (DESC) and referenceId in all 3 tables
+        // Create required tables in user's database
         const tableQueries = [
             `CREATE TABLE IF NOT EXISTS ${appName}_reports (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -177,6 +177,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 reason VARCHAR(255),
                 link VARCHAR(255),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                expires_at DATETIME DEFAULT NULL,
                 UNIQUE KEY unique_type_reference (type, reference_id)
             )`,
             `CREATE TABLE IF NOT EXISTS ${appName}_blacklist (
@@ -186,6 +187,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 reason VARCHAR(255),
                 link VARCHAR(255),
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                expires_at DATETIME DEFAULT NULL,
                 UNIQUE KEY unique_type_reference (type, reference_id)
             )`,
         ];
@@ -204,15 +206,34 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             `CREATE INDEX idx_warnlist_type ON ${appName}_warnlist(type);`,
             `CREATE INDEX idx_warnlist_timestamp ON ${appName}_warnlist(timestamp DESC);`,
             `CREATE INDEX idx_warnlist_reference_id ON ${appName}_warnlist(reference_id);`,
+            `CREATE INDEX idx_warnlist_expires_at ON ${appName}_warnlist(expires_at);`,
             `CREATE FULLTEXT INDEX idx_warnlist_fulltext ON ${appName}_warnlist(reference_id, type, reason, link);`,
 
             `CREATE INDEX idx_blacklist_type ON ${appName}_blacklist(type);`,
             `CREATE INDEX idx_blacklist_timestamp ON ${appName}_blacklist(timestamp DESC);`,
             `CREATE INDEX idx_blacklist_reference_id ON ${appName}_blacklist(reference_id);`,
+            `CREATE INDEX idx_blacklist_expires_at ON ${appName}_blacklist(expires_at);`,
             `CREATE FULLTEXT INDEX idx_blacklist_fulltext ON ${appName}_blacklist(reference_id, type, reason, link);`
         ];
 
         for (const query of indexQueries) {
+            await executeOnUserDatabase(dbDetails, query);
+        }
+
+        // Create a scheduler to delete expired entries from warnlist and blacklist
+        const schedulerQueries = [
+            `CREATE EVENT IF NOT EXISTS ${appName}_warnlist_cleanup
+            ON SCHEDULE EVERY 1 DAY
+            DO
+                DELETE FROM ${appName}_warnlist WHERE expires_at IS NOT NULL AND expires_at < NOW();`,
+
+            `CREATE EVENT IF NOT EXISTS ${appName}_blacklist_cleanup
+            ON SCHEDULE EVERY 1 DAY
+            DO
+                DELETE FROM ${appName}_blacklist WHERE expires_at IS NOT NULL AND expires_at < NOW();`
+        ];
+
+        for (const query of schedulerQueries) {
             await executeOnUserDatabase(dbDetails, query);
         }
 
@@ -316,6 +337,57 @@ appRouter.put('/update-domains', standardLimiter, authenticateTokenWithId, async
     }
 });
 
+// Update default warn + blacklist entry expiry
+appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId, days } = req.body;
+
+    if (!id || !appId) {
+        return res.status(400).json({ error: 'Id and appId are required.' });
+    }
+
+    if (days !== null && (typeof days !== 'number' || days < 1 || days > 365)) {
+        return res.status(400).json({ error: 'Days must be a number between 1 and 365, or null to reset.' });
+    }
+
+    try {
+        // Fetch app name
+        const appQuery = 'SELECT app_name FROM users_apps WHERE creator_id = ? AND id = ?';
+        const app = await new Promise((resolve, reject) => {
+            db.query(appQuery, [id, appId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!app) {
+            return res.status(404).json({ error: 'App not found.' });
+        }
+
+        // Fetch user's database connection details
+        const dbDetails = await getUserDatabaseDetails(db, id);
+
+        // Update the default value for expires_at column in warnlist and blacklist tables
+        const newDefault = days !== null ? `${days} DAY` : 'NULL';
+        const queries = [
+            `ALTER TABLE \`${app.app_name}_warnlist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`,
+            `ALTER TABLE \`${app.app_name}_blacklist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`
+        ];
+
+        for (const query of queries) {
+            await executeOnUserDatabase(dbDetails, query);
+        }
+
+        res.json({
+            message: `Default expiry successfully updated to ${days !== null ? `${days} days` : 'no default'
+                } for warnlist and blacklist.`,
+        });
+    } catch (error) {
+        console.error('Error updating expiry:', error);
+        res.status(500).json({ error: 'An error occurred while updating the expiry: ' + error.message });
+    }
+});
+
 // Endpoint to delete an app
 appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
@@ -357,6 +429,19 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
             }
         }
 
+        // Remove MySQL events related to the app
+        const eventsToDelete = [`${appName}_warnlist_cleanup`, `${appName}_blacklist_cleanup`];
+        for (const event of eventsToDelete) {
+            try {
+                await executeOnUserDatabase(
+                    dbDetails,
+                    `DROP EVENT IF EXISTS \`${event}\``
+                );
+            } catch (error) {
+                console.warn(`Could not delete event ${event}:`, error.message);
+            }
+        }
+
         // Delete the app from users_apps table
         const deleteAppQuery = 'DELETE FROM users_apps WHERE id = ?';
         await new Promise((resolve, reject) => {
@@ -366,7 +451,7 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
             });
         });
 
-        res.json({ message: 'App and related tables deleted successfully.' });
+        res.json({ message: 'App, related tables and events deleted successfully.' });
     } catch (error) {
         console.error('Error deleting app:', error);
         res.status(500).json({ error: 'An error occurred while deleting the app.' });

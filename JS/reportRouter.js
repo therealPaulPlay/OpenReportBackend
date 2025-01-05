@@ -195,7 +195,7 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
     }
 });
 
-// Endpoint 3.2: Delete an Entry
+// Delete an Entry
 reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, table, entryId } = req.body; // `id` is the user ID
 
@@ -224,7 +224,7 @@ reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (
     }
 });
 
-// Endpoint 3.3: Add to Blacklist or Warnlist
+// Add to Blacklist or Warnlist
 reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, table, referenceId, type, reason, link } = req.body;
     if (!["blacklist", "warnlist"].includes(table) || referenceId == null || appId == null) return res.status(400).json({ error: "Table, appId and referenceId are required." });
@@ -265,7 +265,56 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
     }
 });
 
-// Endpoint 3.4: Clean a Table
+// Edit Expiry for an Existing Entry
+reportRouter.put('/edit-expiry', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, entryId, appId, table, newExpiry } = req.body;
+
+    if (!["blacklist", "warnlist"].includes(table) || !entryId || !appId) {
+        return res.status(400).json({ error: "Table, appId and entryId are required." });
+    }
+
+    if (newExpiry !== null && (typeof newExpiry !== 'string' || isNaN(Date.parse(newExpiry)))) {
+        return res.status(400).json({ error: "Invalid expiry date. Must be a valid ISO-8601 date or null to remove expiry." });
+    }
+
+    try {
+        const db = getDB();
+
+        // Verify app ownership and fetch app details
+        const app = await verifyAppOwnership(db, appId, id);
+        if (!app) return res.status(403).json({ error: 'Unauthorized access.' });
+
+        const { app_name, creator_id } = app;
+
+        // Get the app's database
+        const dbDetails = await getUserDatabaseDetails(db, creator_id);
+
+        // Check if the entry exists
+        const entryCheckQuery = `
+            SELECT COUNT(*) AS count FROM \`${app_name}_${table}\` WHERE id = ?;
+        `;
+        const entryCheck = await executeOnUserDatabase(dbDetails, entryCheckQuery, [entryId]);
+
+        if (entryCheck[0].count === 0) {
+            return res.status(404).json({ error: `Entry not found in the ${table}.` });
+        }
+
+        // Update the expires_at value
+        const updateQuery = `
+            UPDATE \`${app_name}_${table}\`
+            SET expires_at = ?
+            WHERE id = ?;
+        `;
+        await executeOnUserDatabase(dbDetails, updateQuery, [newExpiry || null, entryId]);
+
+        res.status(200).json({ message: "Expiry date for entry updated successfully." });
+    } catch (error) {
+        console.error('Error editing expiry:', error);
+        res.status(500).json({ error: 'An error occurred while editing expiry: ' + error.message });
+    }
+});
+
+// Clean a Table
 reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, days, table } = req.body;
 

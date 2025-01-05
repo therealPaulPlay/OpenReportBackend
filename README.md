@@ -138,6 +138,16 @@ This router manages user-created applications.
   }
   ```
 
+7. **PUT `/update-expiry`**
+- **Body**:
+  ```json
+  {
+    "id": "number",
+    "appId": "number",
+    "days": "number / null"
+  }
+  ```
+
 ---
 
 ### `/moderator` Router
@@ -184,7 +194,6 @@ This router handles reporting functionalities for apps, including submission, de
 #### Endpoints:
 
 1. **POST `/submit`**
-   - **Description**: Submit a report for a specific app.
    - **Body**:
      ```json
      {
@@ -198,7 +207,6 @@ This router handles reporting functionalities for apps, including submission, de
      ```
 
 2. **DELETE `/delete`**
-   - **Description**: Delete an entry from the reports, blacklist, or warnlist of a specific app.
    - **Body**:
      ```json
      {
@@ -250,7 +258,6 @@ This router handles reporting functionalities for apps, including submission, de
      ```
 
 5. **PUT `/get-entry`**
-   - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination.
    - **Body**:
     ```json
     {
@@ -262,10 +269,24 @@ This router handles reporting functionalities for apps, including submission, de
     }
      ```
 
+5. **PUT `/edit-expiry`**
+   - **Body**:
+    ```json
+    {
+     "appId": "number",
+     "table": "string",
+     "entryId": "number"
+    }
+     ```
+
 ---
 
 **### `/subscription` Router**
+
 This router handles subscription management through Stripe.
+
+#### Endpoints:
+
 **#### Endpoints:**
 1. **POST `/create-checkout-session`**
 - **Body**:
