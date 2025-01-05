@@ -133,7 +133,8 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
 
         // Insert domains into users_apps_domains table
         const insertDomainQuery = 'INSERT INTO users_apps_domains (app_id, domain) VALUES (?, ?)';
-        for (const domain of domains) {
+        for (let domain of domains) {
+            domain = domain.replace("http://", "").replace("https://", "");
             await new Promise((resolve, reject) => {
                 db.query(insertDomainQuery, [appId, domain], (err) => {
                     if (err) return reject(err);
