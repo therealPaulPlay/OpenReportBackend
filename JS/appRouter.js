@@ -368,19 +368,26 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
         // Fetch user's database connection details
         const dbDetails = await getUserDatabaseDetails(db, id);
 
-        // Update the default value for expires_at column in warnlist and blacklist tables
-        const newDefault = days !== null ? `CURRENT_TIMESTAMP + INTERVAL ${days} DAY` : 'NULL';
-        const queries = [
-            `ALTER TABLE \`${app.app_name}_warnlist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`,
-            `ALTER TABLE \`${app.app_name}_blacklist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`
-        ];
+        let modifyQueries;
+        
+        if (days !== null) {
+            modifyQueries = [
+                `ALTER TABLE \`${app.app_name}_warnlist\` ALTER expires_at SET DEFAULT (DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ${days} DAY))`,
+                `ALTER TABLE \`${app.app_name}_blacklist\` ALTER expires_at SET DEFAULT (DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ${days} DAY))`
+            ];
+        } else {
+            modifyQueries = [
+                `ALTER TABLE \`${app.app_name}_warnlist\` MODIFY expires_at DATETIME NULL`,
+                `ALTER TABLE \`${app.app_name}_blacklist\` MODIFY expires_at DATETIME NULL`
+            ];
+        }
 
-        for (const query of queries) {
-            await executeOnUserDatabase(dbDetails, query); // Alter table can't use params (keep in mind please)
+        for (const query of modifyQueries) {
+            await executeOnUserDatabase(dbDetails, query);
         }
 
         res.json({
-            message: `Default expiry successfully updated to ${days !== null ? `${days} days` : 'never'} for warnlist and blacklist.`,
+            message: `Default expiry successfully updated to ${days !== null ? `${days} days` : 'never'} for warnlist and blacklist.`
         });
     } catch (error) {
         console.error('Error updating expiry:', error);
