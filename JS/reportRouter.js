@@ -390,7 +390,7 @@ reportRouter.put('/get-entry', standardLimiter, async (req, res) => {
 
         const results = await executeOnUserDatabase(dbDetails, getQuery, [referenceId, type]);
 
-        res.status(200).json({ entry: results[0] });
+        res.status(200).json({ entry: results[0] || null });
     } catch (error) {
         console.error('Error fetching data:', error);
         res.status(500).json({ error: 'An error occurred while fetching the data: ' + error.message });
