@@ -351,4 +351,50 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
     }
 });
 
+// PUBLIC API
+// Get entry from warnlist or blacklist by reference ID
+reportRouter.put('/get-entry', standardLimiter, async (req, res) => {
+    const { appId, table, secret, referenceId } = req.body;
+
+    if (!['warnlist', 'blacklist'].includes(table) || !appId || !secret || !referenceId) {
+        return res.status(400).json({ error: 'Valid table, secret, referenceId and appId are required.' });
+    }
+
+    try {
+        const db = getDB();
+
+        const getAppQuery = `
+        SELECT * FROM users_apps
+        WHERE id = ? AND secret_key = ?;
+        `;
+
+        const app = await new Promise((resolve, reject) => {
+            db.query(getAppQuery, [appId, secret], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        })
+
+        if (!app) {
+            return res.status(403).json({ error: 'App not found or unauthorized.' });
+        }
+
+        const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
+
+        // Fetch paginated results with optional search
+        const getQuery = `
+            SELECT * FROM \`${app.app_name}_${table}\`
+            WHERE reference_id = ?
+            LIMIT 1;
+        `;
+
+        const results = await executeOnUserDatabase(dbDetails, getQuery, [referenceId]);
+
+        res.status(200).json({ data: results });
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        res.status(500).json({ error: 'An error occurred while fetching the data: ' + error.message });
+    }
+});
+
 module.exports = reportRouter;

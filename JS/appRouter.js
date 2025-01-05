@@ -49,6 +49,36 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
     }
 });
 
+// Endpoint to get app secret key by id
+appRouter.put('/secret-key', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, appId } = req.body;
+    if (!id || !appId) return res.status(400).json({ error: "Id and appId are required." });
+
+    const db = getDB();
+
+    try {
+        const query = `
+            SELECT secret_key FROM users_apps
+            WHERE id = ? AND creator_id = ?;`;
+
+        const result = await new Promise((resolve, reject) => {
+            db.query(query, [appId, id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!result) {
+            return res.status(404).json({ error: 'App not found or missing permissions.' });
+        }
+
+        res.json({ secret: result?.secret_key });
+    } catch (error) {
+        console.error('Error retrieving app secret key:', error);
+        res.status(500).json({ error: 'An error occurred while retrieving the app secret key.' });
+    }
+});
+
 // Endpoint to create a new app
 appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
@@ -86,15 +116,16 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             return res.status(409).json({ error: 'App with the same name already exists.' });
         }
 
-        const apiKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character key
+        const apiKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character api key (for reports etc.)
+        const secretKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character api key (for api requests etc.)
 
         // Insert new app into users_apps table
         const insertAppQuery = `
-            INSERT INTO users_apps (creator_id, app_name, api_key)
-            VALUES (?, ?, ?)
+            INSERT INTO users_apps (creator_id, app_name, api_key, secret_key)
+            VALUES (?, ?, ?, ?)
         `;
         const appId = await new Promise((resolve, reject) => {
-            db.query(insertAppQuery, [id, appName, apiKey], (err, results) => {
+            db.query(insertAppQuery, [id, appName, apiKey, secretKey], (err, results) => {
                 if (err) return reject(err);
                 resolve(results.insertId);
             });

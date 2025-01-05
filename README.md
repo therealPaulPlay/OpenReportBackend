@@ -228,13 +228,29 @@ This router handles reporting functionalities for apps, including submission, de
      ```
 
 5. **PUT `/get-table`**
+   - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination. The search query is optional.
+   - **Body**:
+    ```json
+    {
+     "id": "number",
+     "appId": "number",
+     "table": "string",
+     "page": "number",
+     "search": "string"
+    }
+     ```
+
+5. **PUT `/get-table`**
    - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination.
    - **Body**:
-     - `id` (number): The user ID.
-     - `appId` (number): The ID of the app.
-     - `table` (string): The name of the table ("reports", "warnlist", "blacklist").
-     - `page` (number): The page number for pagination.
-     - `search` (string): Optional search parameter.
+    ```json
+    {
+     "appId": "number",
+     "table": "string",
+     "referenceId": "string",
+     "secret": "string"
+    }
+     ```
 
 ---
 
@@ -306,6 +322,7 @@ The application uses several tables to store user, app, and moderation-related d
 | blacklist_threshold  | INT          | NO       |            | DEFAULT 10                 |
 | moderator_count      | INT          | NO       |            |                            |
 | api_key              | VARCHAR(255) | NO       |            |                            |
+| secret_key           | VARCHAR(255) | NO       |            |                            |
 
 #### `users_apps_domains`
 | Column  | Type         | Nullable | Key        | Additional Info                           |
@@ -327,7 +344,7 @@ The application uses several tables to store user, app, and moderation-related d
 
 1. **Indexing**:
    - Index the `email` and `stripe_customer_id` columns in the `users` table for faster lookups.
-   - Index the `app_name` and `api_key` columns in the `users_apps` table to improve performance.
+   - Index the `app_name`, `api_key` and `secret_key` columns in the `users_apps` table to improve performance.
    - Index the `user_id` column in the `apps_moderators` table for efficient queries.
 
 2. **Foreign Key Constraints**:
