@@ -369,7 +369,9 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
         const dbDetails = await getUserDatabaseDetails(db, id);
 
         // Update the default value for expires_at column in warnlist and blacklist tables
-        const newDefault = days !== null ? `NOW() + INTERVAL ${days} DAY` : 'NULL';
+        const newDefault = days !== null
+            ? `DATE_ADD(NOW(), INTERVAL ${days} DAY)`
+            : 'NULL';
         const queries = [
             `ALTER TABLE \`${app.app_name}_warnlist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`,
             `ALTER TABLE \`${app.app_name}_blacklist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`
