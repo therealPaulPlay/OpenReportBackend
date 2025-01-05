@@ -249,7 +249,7 @@ This router handles reporting functionalities for apps, including submission, de
     }
      ```
 
-5. **PUT `/get-table`**
+5. **PUT `/get-entry`**
    - **Description**: Retrieve entries from the reports, blacklist, or warnlist of a specific app with pagination.
    - **Body**:
     ```json
