@@ -234,7 +234,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         ];
 
         for (const query of schedulerQueries) {
-            await executeOnUserDatabase(dbDetails, query);
+            await executeOnUserDatabase(dbDetails, query, undefined, false);
         }
 
         res.status(201).json({
@@ -370,17 +370,16 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
         // Update the default value for expires_at column in warnlist and blacklist tables
         const newDefault = days !== null ? `${days} DAY` : 'NULL';
         const queries = [
-            `ALTER TABLE \`${app.app_name}_warnlist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`,
-            `ALTER TABLE \`${app.app_name}_blacklist\` ALTER COLUMN expires_at SET DEFAULT ${newDefault}`
+            `ALTER TABLE \`${app.app_name}_warnlist\` ALTER COLUMN expires_at SET DEFAULT ?`,
+            `ALTER TABLE \`${app.app_name}_blacklist\` ALTER COLUMN expires_at SET DEFAULT ?`
         ];
 
         for (const query of queries) {
-            await executeOnUserDatabase(dbDetails, query);
+            await executeOnUserDatabase(dbDetails, query, [newDefault]);
         }
 
         res.json({
-            message: `Default expiry successfully updated to ${days !== null ? `${days} days` : 'no default'
-                } for warnlist and blacklist.`,
+            message: `Default expiry successfully updated to ${days !== null ? `${days} days` : 'never'} for warnlist and blacklist.`,
         });
     } catch (error) {
         console.error('Error updating expiry:', error);

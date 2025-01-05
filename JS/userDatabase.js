@@ -16,12 +16,20 @@ async function testDatabaseConnection(details) {
 }
 
 // Execute query on user database and ensure the connection is closed
-async function executeOnUserDatabase(details, query, params = []) {
+async function executeOnUserDatabase(details, query, params = [], usePreparedStatements = true) {
     const { db_host: host, db_user_name: user, db_password: password, db_database: database, db_port: port } = details;
 
     try {
         const connection = await mysql.createConnection({ host, user, password, database, port });
-        const [results] = await connection.execute(query, params);
+
+        let results;
+
+        if (usePreparedStatements) {
+            [results] = await connection.execute(query, params); // Execute includes params on the MySQL server, checking for security and preventing SQL injection
+        } else {
+            results = await connection.query(query, params); // However, execute doesn't work for all SQL syntax yet
+        }
+
         await connection.end();
         return results;
     } catch (error) {
