@@ -361,7 +361,7 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
         });
 
         if (!app) {
-            return res.status(404).json({ error: 'App not found.' });
+            return res.status(404).json({ error: 'App not found or missing permission.' });
         }
 
         // Fetch user's database connection details

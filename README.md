@@ -273,9 +273,11 @@ This router handles reporting functionalities for apps, including submission, de
    - **Body**:
     ```json
     {
+     "id": "number",
      "appId": "number",
      "table": "string",
-     "entryId": "number"
+     "entryId": "number",
+     "newExpiry": "number"
     }
      ```
 
