@@ -69,7 +69,7 @@ appRouter.put('/secret-key', standardLimiter, authenticateTokenWithId, async (re
         });
 
         if (!result) {
-            return res.status(404).json({ error: 'App not found or missing permissions.' });
+            return res.status(404).json({ error: 'Only app owners can reveal the secret key.' });
         }
 
         res.json({ secret: result?.secret_key });
