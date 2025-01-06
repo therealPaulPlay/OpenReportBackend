@@ -3,7 +3,7 @@ const { getDB } = require('./connectDB.js');
 const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
-const { standardLimiter, manualEntryLimiter } = require('./rateLimiting.js');
+const { standardLimiter, manualEntryLimiter, highLimiter } = require('./rateLimiting.js');
 const validateCaptcha = require('./captchaMiddleware.js');
 
 // Function to verify ownership or moderation and return app info
@@ -402,7 +402,7 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
 
 // PUBLIC API
 // Get entry from warnlist or blacklist by reference ID
-reportRouter.put('/get-entry', standardLimiter, async (req, res) => {
+reportRouter.put('/get-entry', highLimiter, async (req, res) => {
     const { appId, table, type, secret, referenceId } = req.body;
 
     if (!['warnlist', 'blacklist'].includes(table) || !appId || !secret || !referenceId || !type) {
