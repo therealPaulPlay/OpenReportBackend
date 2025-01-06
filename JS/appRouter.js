@@ -91,7 +91,7 @@ appRouter.put('/rotate-secret', standardLimiter, authenticateTokenWithId, async 
             SELECT id FROM users_apps 
             WHERE id = ? AND creator_id = ?;
         `;
-        
+
         const verifyResult = await new Promise((resolve, reject) => {
             db.query(verifyQuery, [appId, id], (err, results) => {
                 if (err) return reject(err);
@@ -118,9 +118,9 @@ appRouter.put('/rotate-secret', standardLimiter, authenticateTokenWithId, async 
             });
         });
 
-        res.json({ 
+        res.json({
             message: 'Secret key rotated successfully.',
-            secret: newSecretKey 
+            secret: newSecretKey
         });
 
     } catch (error) {
@@ -227,6 +227,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
+                created_by VARCHAR(255) NOT NULL DEFAULT 'system',
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 expires_at DATETIME DEFAULT NULL,
                 UNIQUE KEY unique_type_reference (type, reference_id)
@@ -237,6 +238,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
                 type VARCHAR(255) NOT NULL,
                 reason VARCHAR(255),
                 link VARCHAR(255),
+                created_by VARCHAR(255) NOT NULL DEFAULT 'system',
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
                 expires_at DATETIME DEFAULT NULL,
                 UNIQUE KEY unique_type_reference (type, reference_id)
@@ -419,7 +421,7 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
         const dbDetails = await getUserDatabaseDetails(db, id);
 
         let modifyQueries;
-        
+
         if (days !== null) {
             modifyQueries = [
                 `ALTER TABLE \`${app.app_name}_warnlist\` ALTER expires_at SET DEFAULT (DATE_ADD(CURRENT_TIMESTAMP, INTERVAL ${days} DAY))`,

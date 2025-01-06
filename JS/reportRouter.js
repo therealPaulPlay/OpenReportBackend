@@ -251,12 +251,22 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
             return res.status(409).json({ error: `Entry already exists in the ${table}.` });
         }
 
+        const getUserEmailQuery = `SELECT email FROM users WHERE id = ?;`;
+        const userEmail = await new Promise((resolve, reject) => {
+            db.query(getUserEmailQuery, [id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0].email);
+            });
+        });
+
+        if (!userEmail) return res.status(404).json({ error: "User's email address not found." });
+
         // Insert into blacklist
         const insertQuery = `
-            INSERT INTO \`${app_name}_${table}\` (reference_id, type, reason, link)
-            VALUES (?, ?, ?, ?);
+            INSERT INTO \`${app_name}_${table}\` (reference_id, type, reason, link, created_by)
+            VALUES (?, ?, ?, ?, ?);
         `;
-        await executeOnUserDatabase(dbDetails, insertQuery, [referenceId, type, reason || null, link || null]);
+        await executeOnUserDatabase(dbDetails, insertQuery, [referenceId, type, reason || null, link || null, userEmail]);
 
         res.status(201).json({ message: `Entry added to ${table} successfully.` });
     } catch (error) {
