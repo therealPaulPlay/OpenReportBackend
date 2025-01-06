@@ -79,6 +79,56 @@ appRouter.put('/secret-key', standardLimiter, authenticateTokenWithId, async (re
     }
 });
 
+// Endpoint to rotate app secret key
+appRouter.put('/rotate-secret', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const { id, appId } = req.body;
+    if (!id || !appId) return res.status(400).json({ error: "Id and appId are required." });
+
+    const db = getDB();
+
+    try {
+        const verifyQuery = `
+            SELECT id FROM users_apps 
+            WHERE id = ? AND creator_id = ?;
+        `;
+        
+        const verifyResult = await new Promise((resolve, reject) => {
+            db.query(verifyQuery, [appId, id], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!verifyResult) {
+            return res.status(404).json({ error: 'Only app owners can rotate the secret key.' });
+        }
+
+        // Generate new secret key
+        const newSecretKey = crypto.randomBytes(16).toString('hex');
+        const updateQuery = `
+            UPDATE users_apps 
+            SET secret_key = ? 
+            WHERE id = ? AND creator_id = ?;
+        `;
+
+        await new Promise((resolve, reject) => {
+            db.query(updateQuery, [newSecretKey, appId, id], (err, result) => {
+                if (err) return reject(err);
+                resolve(result);
+            });
+        });
+
+        res.json({ 
+            message: 'Secret key rotated successfully.',
+            secret: newSecretKey 
+        });
+
+    } catch (error) {
+        console.error('Error rotating app secret key:', error);
+        res.status(500).json({ error: 'An error occurred while rotating the app secret key.' });
+    }
+});
+
 // Endpoint to create a new app
 appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();

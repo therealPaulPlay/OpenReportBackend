@@ -148,6 +148,15 @@ This router manages user-created applications.
   }
   ```
 
+8. **PUT `/rotate-secret`**
+- **Body**:
+  ```json
+  {
+    "id": "number",
+    "appId": "number"
+  }
+  ```
+
 ---
 
 ### `/moderator` Router
