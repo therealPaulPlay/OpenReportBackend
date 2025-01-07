@@ -61,22 +61,22 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         if (referrer) {
             try {
                 const domain = new URL(referrer).hostname;
-                if (domain == process.env.SITE_DOMAIN.replace("https://", "").replace(/\/$/, "")) return;
-                const domainCheckQuery = `
+
+                // If the referrer domain is not the site's own domain, investigate
+                if (domain != process.env.SITE_DOMAIN.replace("https://", "").replace(/\/$/, "")) {
+                    const domainCheckQuery = `
                     SELECT COUNT(*) as count 
                     FROM users_apps_domains 
-                    WHERE app_id = ? AND domain = ?
-                `;
+                    WHERE app_id = ? AND domain = ?`;
 
-                const [domainResult] = await new Promise((resolve, reject) => {
-                    db.query(domainCheckQuery, [app.app_id, domain], (err, results) => {
-                        if (err) return reject(err);
-                        resolve(results);
+                    const [domainResult] = await new Promise((resolve, reject) => {
+                        db.query(domainCheckQuery, [app.app_id, domain], (err, results) => {
+                            if (err) return reject(err);
+                            resolve(results);
+                        });
                     });
-                });
 
-                if (domainResult.count === 0) {
-                    return res.status(403).json({ error: 'Domain not authorized for this app.' });
+                    if (domainResult.count === 0) return res.status(403).json({ error: 'Domain not authorized for this app.' });
                 }
             } catch (urlError) {
                 return res.status(400).json({ error: 'Invalid referrer URL: ' + urlError });
