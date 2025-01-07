@@ -58,9 +58,10 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
         if (app.monthly_report_count >= app.report_limit) return res.status(429).json({ error: 'Monthly report limit exceeded for this app.' });
 
         // Check domain restrictions
-        if (referrer && referrer !== process.env.SITE_DOMAIN.replace("https://", "")) {
+        if (referrer) {
             try {
                 const domain = new URL(referrer).hostname;
+                if (domain == process.env.SITE_DOMAIN.replace("https://", "").replace(/\/$/, "")) return;
                 const domainCheckQuery = `
                     SELECT COUNT(*) as count 
                     FROM users_apps_domains 
