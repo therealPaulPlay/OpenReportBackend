@@ -43,7 +43,7 @@ async function verifyAppByKey(db, key) {
 reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) => {
     const { key, referenceId, type, reason, notes, link } = req.body;
     const reporterIp = req.clientIp;
-    const referrer = req.get('Referer'); // Yes, this HTTP header was misspelled
+    const referrer = req.get('x-custom-referrer'); // Switch from HTTP "referer" header to custom referrer for more reliable results (browsers don't mess with it)
 
     if (!key || !referenceId || !type) return res.status(400).json({ error: 'Key, referenceId, and type are required.' });
     if (notes && notes.length > 1000) return res.status(400).json({ error: "Please keep your notes short and concise." });
