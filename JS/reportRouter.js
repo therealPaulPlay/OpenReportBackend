@@ -77,8 +77,8 @@ reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) 
 
                     if (domainResult.count === 0) return res.status(403).json({ error: 'Domain not authorized for this app.' });
                 }
-            } catch (urlError) {
-                return res.status(400).json({ error: 'Invalid referrer URL: ' + urlError });
+            } catch (error) {
+                console.error("Error durring submission verifying the custom referrer URL:", error);
             }
         }
 
