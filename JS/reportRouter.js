@@ -3,7 +3,7 @@ const { getDB } = require('./connectDB.js');
 const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
 const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
-const { standardLimiter, manualEntryLimiter, highLimiter } = require('./rateLimiting.js');
+const { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } = require('./rateLimiting.js');
 const validateCaptcha = require('./captchaMiddleware.js');
 
 // Function to verify ownership or moderation and return app info
@@ -40,7 +40,7 @@ async function verifyAppByKey(db, key) {
 }
 
 // Submit a report
-reportRouter.post('/submit', standardLimiter, validateCaptcha, async (req, res) => {
+reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) => {
     const { key, referenceId, type, reason, notes, link } = req.body;
     const reporterIp = req.clientIp;
     const referrer = req.get('x-custom-referrer'); // Switch from HTTP "referer" header to custom referrer for more reliable results (browsers don't mess with it)

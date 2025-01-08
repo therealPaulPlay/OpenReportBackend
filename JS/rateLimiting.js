@@ -21,6 +21,13 @@ const standardLimiter = rateLimit({
     message: { error: 'You are sending too many requests.' }
 });
 
+const submitLimiter = rateLimit({
+    windowMs: 16 * 60 * 60 * 1000,
+    keyGenerator: (req) => req.clientIp,
+    max: 10,
+    message: { error: 'You have submitted too many reports for today.' }
+});
+
 const highLimiter = rateLimit({
     windowMs: 1000,
     keyGenerator: (req) => req.clientIp,
@@ -43,4 +50,4 @@ const manualEntryLimiter = rateLimit({
 });
 
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter, manualEntryLimiter, highLimiter };
+module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter, manualEntryLimiter, highLimiter, submitLimiter };
