@@ -358,7 +358,7 @@ reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (r
     }
 });
 
-// Get entries with optional search
+// Get entries with relevancy-based search functionality
 reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (req, res) => {
     const { id, appId, table, page = 1, search = '' } = req.body;
 
@@ -368,7 +368,6 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
 
     try {
         const db = getDB();
-
         // Verify ownership or moderation
         const app = await verifyAppOwnership(db, appId, id);
         if (!app) {
@@ -376,33 +375,69 @@ reportRouter.put('/get-table', authenticateTokenWithId, standardLimiter, async (
         }
 
         const dbDetails = await getUserDatabaseDetails(db, app.creator_id);
-
         const limit = 50;
         const offset = (Number(page) - 1) * limit;
 
-        // Build the query for searching
-        let searchQuery = '';
-        if (search) {
-            const sanitizedSearch = search.replace(/'/g, "\\'"); // Escape single quotes for safety
-            const extraReportTables = table == "reports" ? ", notes, reporter_ip" : ""; // Include more columns if its the reports table
+        // Build the search conditions and relevancy scoring
+        let searchConditions = [];
+        let relevancyScore = '';
 
-            // Use MATCH AGAINST for full-text search
-            searchQuery = `
-                AND MATCH(reference_id, type, reason, link${extraReportTables})
-                AGAINST ('${sanitizedSearch}' IN BOOLEAN MODE)
-            `;
+        if (search) {
+            const sanitizedSearch = search.replace(/[%_']/g, char => `\\${char}`);
+
+            // Base columns for all tables
+            const baseColumns = ['reference_id', 'type', 'reason', 'link'];
+
+            // Additional columns for reports table
+            const reportsColumns = table === 'reports' ? ['notes', 'reporter_ip'] : [];
+
+            // Combine all searchable columns
+            const searchableColumns = [...baseColumns, ...reportsColumns];
+
+            // Create LIKE conditions for each column
+            const columnConditions = searchableColumns.map(column =>
+                `${column} LIKE '%${sanitizedSearch}%'`
+            );
+
+            // Create relevancy scoring based on exact matches and position of match
+            const relevancyTerms = searchableColumns.map(column => `
+                CASE
+                    WHEN ${column} = '${sanitizedSearch}' THEN 100
+                    WHEN ${column} LIKE '${sanitizedSearch}%' THEN 75
+                    WHEN ${column} LIKE '%${sanitizedSearch}%' THEN 50
+                    ELSE 0
+                END
+            `).join(' + ');
+
+            relevancyScore = `(${relevancyTerms}) as relevancy`;
+            searchConditions.push(`(${columnConditions.join(' OR ')})`);
         }
 
-        // Fetch paginated results with optional search
+        // Combine search conditions
+        const whereClause = searchConditions.length
+            ? `WHERE ${searchConditions.join(' AND ')}`
+            : 'WHERE 1';
+
+        // Add relevancy scoring to the query if searching
+        const selectClause = search
+            ? `SELECT *, ${relevancyScore}`
+            : 'SELECT *';
+
+        // Order by relevancy first if searching, then by timestamp
+        const orderClause = search
+            ? 'ORDER BY relevancy DESC, timestamp DESC, id DESC'
+            : 'ORDER BY timestamp DESC, id DESC';
+
+        // Fetch paginated results with search
         const getQuery = `
-            SELECT * FROM \`${app.app_name}_${table}\`
-            WHERE 1 ${searchQuery}
-            ORDER BY timestamp DESC, id DESC
+            ${selectClause}
+            FROM \`${app.app_name}_${table}\`
+            ${whereClause}
+            ${orderClause}
             LIMIT ${offset}, ${limit};
         `;
 
         const results = await executeOnUserDatabase(dbDetails, getQuery);
-
         res.status(200).json({ data: results });
     } catch (error) {
         console.error('Error fetching data:', error);
