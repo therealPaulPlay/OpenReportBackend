@@ -328,7 +328,7 @@ reportRouter.put('/edit-expiry', standardLimiter, authenticateTokenWithId, async
 reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, days, table } = req.body;
 
-    if (!days || days < 1 || !['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
+    if (!days || days < 1 || !Number.isInteger(days) || !['reports', 'warnlist', 'blacklist'].includes(table) || !appId) {
         return res.status(400).json({ error: 'Valid days (minimum 1), table ("reports", "warnlist", "blacklist"), and appId are required.' });
     }
 
@@ -340,6 +340,9 @@ reportRouter.delete('/clean', standardLimiter, authenticateTokenWithId, async (r
         if (!app) return res.status(403).json({ error: 'Unauthorized access.' });
 
         const { app_id, creator_id, app_name } = app;
+
+        // Check owner status
+        if (creator_id != id && days < 30) return res.status(403).json({ error: 'Only the owner can clean recent entries (<30 days).' });
 
         // Get the app's database
         const dbDetails = await getUserDatabaseDetails(db, creator_id);

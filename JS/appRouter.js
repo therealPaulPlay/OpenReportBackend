@@ -447,6 +447,145 @@ appRouter.put('/update-expiry', standardLimiter, authenticateTokenWithId, async 
     }
 });
 
+// Endpoint to enable reports auto-cleanup for app
+appRouter.post('/enable-auto-cleanup', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId, days } = req.body;
+
+    if (!id || !appId || !days || !Number.isInteger(days) || days < 1) {
+        return res.status(400).json({ error: 'Valid user id, app id, and days (positive integer) are required.' });
+    }
+
+    try {
+        // Fetch app details
+        const appQuery = 'SELECT app_name FROM users_apps WHERE creator_id = ? AND id = ?';
+        const app = await new Promise((resolve, reject) => {
+            db.query(appQuery, [id, appId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!app) {
+            return res.status(404).json({ error: 'App not found.' });
+        }
+
+        const appName = app.app_name;
+
+        // Get user's database connection details
+        const dbDetails = await getUserDatabaseDetails(db, id);
+
+        // Create event for auto-cleanup
+        const eventName = `${appName}_reports_cleanup`;
+        const createEventQuery = `
+            CREATE EVENT IF NOT EXISTS \`${eventName}\`
+            ON SCHEDULE EVERY 1 DAY
+            DO
+                DELETE FROM \`${appName}_reports\`
+                WHERE timestamp < DATE_SUB(NOW(), INTERVAL ? DAY)
+        `;
+
+        await executeOnUserDatabase(dbDetails, createEventQuery, [days], false);
+
+        res.json({ message: 'Auto-cleanup enabled successfully.' });
+
+    } catch (error) {
+        console.error('Error enabling auto-cleanup:', error);
+        res.status(500).json({ error: 'An error occurred while enabling auto-cleanup.' });
+    }
+});
+
+// Endpoint to disable reports auto-cleanup for app
+appRouter.delete('/disable-auto-cleanup', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId } = req.body;
+
+    if (!id || !appId) return res.status(400).json({ error: 'User id and app id are required.' });
+
+    try {
+        // Fetch app details
+        const appQuery = 'SELECT app_name FROM users_apps WHERE creator_id = ? AND id = ?';
+        const app = await new Promise((resolve, reject) => {
+            db.query(appQuery, [id, appId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!app) {
+            return res.status(404).json({ error: 'App not found.' });
+        }
+
+        const appName = app.app_name;
+
+        // Get user's database connection details
+        const dbDetails = await getUserDatabaseDetails(db, id);
+
+        // Drop the event
+        const dropEventQuery = `DROP EVENT IF EXISTS \`${appName}_reports_cleanup\``;
+        await executeOnUserDatabase(dbDetails, dropEventQuery);
+
+        res.json({ message: 'Auto-cleanup disabled successfully.' });
+
+    } catch (error) {
+        console.error('Error disabling auto-cleanup:', error);
+        res.status(500).json({ error: 'An error occurred while disabling auto-cleanup.' });
+    }
+});
+
+// Endpoint to get auto-cleanup configuration
+appRouter.get('/get-auto-cleanup', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId } = req.query;
+    if (!id || !appId) return res.status(400).json({ error: 'User id and app id are required.' });
+
+    try {
+        // Fetch app details
+        const appQuery = 'SELECT app_name FROM users_apps WHERE creator_id = ? AND id = ?';
+        const app = await new Promise((resolve, reject) => {
+            db.query(appQuery, [id, appId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results[0]);
+            });
+        });
+
+        if (!app) return res.status(404).json({ error: 'App not found.' });
+
+        const appName = app.app_name;
+
+        // Get user's database connection details
+        const dbDetails = await getUserDatabaseDetails(db, id);
+
+        // Get event details
+        const getEventQuery = `
+            SELECT EVENT_DEFINITION
+            FROM information_schema.EVENTS 
+            WHERE EVENT_SCHEMA = ? 
+            AND EVENT_NAME = ?
+        `;
+        const eventDetails = await executeOnUserDatabase(
+            dbDetails,
+            getEventQuery,
+            [dbDetails.db_database, `${appName}_reports_cleanup`]
+        );
+
+        if (!eventDetails || eventDetails.length === 0) {
+            return res.json({ days: null });
+        }
+
+        // Extract days value from EVENT_DEFINITION
+        const eventDefinition = eventDetails[0].EVENT_DEFINITION;
+        const daysMatch = eventDefinition.match(/INTERVAL (\d+) DAY/);
+        const days = daysMatch ? parseInt(daysMatch[1]) : null;
+
+        res.json({ days });
+
+    } catch (error) {
+        console.error('Error getting auto-cleanup configuration:', error);
+        res.status(500).json({ error: 'An error occurred while getting auto-cleanup configuration.' });
+    }
+});
+
 // Endpoint to delete an app
 appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
