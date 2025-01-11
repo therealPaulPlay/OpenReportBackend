@@ -522,8 +522,7 @@ appRouter.delete('/disable-auto-cleanup', standardLimiter, authenticateTokenWith
         const dbDetails = await getUserDatabaseDetails(db, id);
 
         // Drop the event
-        const dropEventQuery = `DROP EVENT IF EXISTS \`${appName}_reports_cleanup\``;
-        await executeOnUserDatabase(dbDetails, dropEventQuery);
+        await executeOnUserDatabase(dbDetails, `DROP EVENT IF EXISTS \`${appName}_reports_cleanup\``, undefined, false);
 
         res.json({ message: 'Auto-cleanup disabled successfully.' });
 
