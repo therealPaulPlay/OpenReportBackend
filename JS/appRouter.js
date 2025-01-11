@@ -467,7 +467,7 @@ appRouter.post('/enable-auto-cleanup', standardLimiter, authenticateTokenWithId,
         });
 
         if (!app) {
-            return res.status(404).json({ error: 'App not found.' });
+            return res.status(404).json({ error: 'App not found or missing permission.' });
         }
 
         const appName = app.app_name;
@@ -513,7 +513,7 @@ appRouter.delete('/disable-auto-cleanup', standardLimiter, authenticateTokenWith
         });
 
         if (!app) {
-            return res.status(404).json({ error: 'App not found.' });
+            return res.status(404).json({ error: 'App not found or missing permission.' });
         }
 
         const appName = app.app_name;
@@ -630,10 +630,7 @@ appRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (req
         const eventsToDelete = [`${appName}_warnlist_cleanup`, `${appName}_blacklist_cleanup`];
         for (const event of eventsToDelete) {
             try {
-                await executeOnUserDatabase(
-                    dbDetails,
-                    `DROP EVENT IF EXISTS \`${event}\``
-                );
+                await executeOnUserDatabase(dbDetails, `DROP EVENT IF EXISTS \`${event}\``, undefined, false);
             } catch (error) {
                 console.warn(`Could not delete event ${event}:`, error.message);
             }

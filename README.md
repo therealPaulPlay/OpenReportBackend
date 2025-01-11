@@ -157,6 +157,37 @@ This router manages user-created applications.
   }
   ```
 
+  9. ****POST **`/enable-auto-cleanup`******
+- Enables automatic cleanup of old reports based on specified days.
+- ****Body****:
+  ```json
+  {
+    "id": "number",
+    "appId": "number",
+    "days": "number"
+  }
+  ```
+
+10. ****DELETE **`/disable-auto-cleanup`******
+- Disables automatic cleanup of reports.
+- ****Body****:
+  ```json
+  {
+    "id": "number",
+    "appId": "number"
+  }
+  ```
+
+11. ****PUT **`/get-auto-cleanup`******
+- Returns the current auto-cleanup configuration.
+- ****Body****:
+  ```json
+  {
+    "id": "number",
+    "appId": "number"
+  }
+ ```
+
 ---
 
 ### `/moderator` Router
