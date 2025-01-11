@@ -452,7 +452,7 @@ appRouter.post('/enable-auto-cleanup', standardLimiter, authenticateTokenWithId,
     const db = getDB();
     const { id, appId, days } = req.body;
 
-    if (!id || !appId || !days || !Number.isInteger(days) || days < 1) {
+    if (!id || !appId || !days || !Number.isInteger(days) || days < 30 || days > 365) {
         return res.status(400).json({ error: 'Valid user id, app id, and days (positive integer) are required.' });
     }
 
