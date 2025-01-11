@@ -534,9 +534,9 @@ appRouter.delete('/disable-auto-cleanup', standardLimiter, authenticateTokenWith
 });
 
 // Endpoint to get auto-cleanup configuration
-appRouter.get('/get-auto-cleanup', standardLimiter, authenticateTokenWithId, async (req, res) => {
+appRouter.put('/get-auto-cleanup', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
-    const { id, appId } = req.query;
+    const { id, appId } = req.body;
     if (!id || !appId) return res.status(400).json({ error: 'User id and app id are required.' });
 
     try {
