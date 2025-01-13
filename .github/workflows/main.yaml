@@ -1,4 +1,4 @@
-name: Deploy Account Backend Node Server
+name: Deploy Node.js Backend
 
 on:
   push:
