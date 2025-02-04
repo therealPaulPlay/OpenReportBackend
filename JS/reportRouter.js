@@ -5,6 +5,7 @@ const reportRouter = express.Router();
 const { authenticateTokenWithId } = require('./authUtils.js');
 const { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } = require('./rateLimiting.js');
 const validateCaptcha = require('./captchaMiddleware.js');
+const filterProfanity = require('./filterProfanity.js');
 
 // Function to verify ownership or moderation and return app info
 async function verifyAppOwnership(db, appId, userId) {
@@ -41,12 +42,18 @@ async function verifyAppByKey(db, key) {
 
 // Submit a report
 reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) => {
-    const { key, referenceId, type, reason, notes, link } = req.body;
+    const { key, referenceId, type, link } = req.body;
+    let { reason, notes } = req.body;
+
     const reporterIp = req.clientIp;
     const referrer = req.get('x-custom-referrer'); // Switch from HTTP "referer" header to custom referrer for more reliable results (browsers don't mess with it)
 
     if (!key || !referenceId || !type) return res.status(400).json({ error: 'Key, referenceId, and type are required.' });
     if (notes && notes.length > 1000) return res.status(400).json({ error: "Please keep your notes short and concise." });
+
+    // Apply profanity filtering to reason and notes
+    if (reason) reason = filterProfanity(reason);
+    if (notes) notes = filterProfanity(notes);
 
     try {
         const db = getDB();
