@@ -6,6 +6,7 @@ const { authenticateTokenWithId } = require('./authUtils.js');
 const { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } = require('./rateLimiting.js');
 const validateCaptcha = require('./captchaMiddleware.js');
 const filterProfanity = require('./filterProfanity.js');
+const isBannedIP = require('./filterBannedIPs.js');
 
 // Function to verify ownership or moderation and return app info
 async function verifyAppOwnership(db, appId, userId) {
@@ -54,6 +55,9 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
     // Apply profanity filtering to reason and notes
     if (reason) reason = filterProfanity(reason);
     if (notes) notes = filterProfanity(notes);
+
+    // Filter out blocked IP addresses (TOR, VPNs etc.)
+    if (isBannedIP(reporterIp)) return res.status(403).json({ message: 'Failed to submit report due to IP restrictions.' });
 
     try {
         const db = getDB();
