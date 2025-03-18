@@ -28,8 +28,6 @@ function createNewJwtToken(user) {
     let accessToken = '';
 
     try {
-        const jwtTokenExpirationTime = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60); // 7 days
-
         accessToken = jwt.sign(
             {
                 sub: user.email, // Subject (email address)
@@ -37,7 +35,7 @@ function createNewJwtToken(user) {
             },
             process.env.JWT_SECRET,
             {
-                expiresIn: jwtTokenExpirationTime
+                expiresIn: "7d"
             }
         );
     } catch (e) {
