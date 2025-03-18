@@ -25,10 +25,8 @@ async function isPasswordValid(plainPassword, hashedPassword) {
 }
 
 function createNewJwtToken(user) {
-    let accessToken = '';
-
     try {
-        accessToken = jwt.sign(
+        const accessToken = jwt.sign(
             {
                 sub: user.email, // Subject (email address)
                 userId: user.id // Custom claim for user ID
@@ -38,13 +36,12 @@ function createNewJwtToken(user) {
                 expiresIn: "7d"
             }
         );
-    } catch (e) {
-        accessToken = '';
-        console.error('Token generation error: ', e.message);
+        console.info('JWT token generated successfully.');
+        return accessToken;
+    } catch (error) {
+        console.error('Token generation error: ', error.message);
+        return null;
     }
-
-    console.info('JWT token generated successfully.');
-    return accessToken;
 }
 
 function authenticateTokenWithId(req, res, next) {
