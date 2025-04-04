@@ -491,7 +491,7 @@ reportRouter.put('/get-entry', highLimiter, async (req, res) => {
 
         // Fetch paginated results with optional search
         const getQuery = `
-            SELECT * FROM \`${app.app_name}_${table}\`
+            SELECT id, reference_id, type, reason, link, timestamp, expires_at FROM \`${app.app_name}_${table}\`
             WHERE reference_id = ? AND type = ?
             LIMIT 1;
         `;
