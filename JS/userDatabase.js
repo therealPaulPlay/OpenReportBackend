@@ -27,7 +27,7 @@ async function executeOnUserDatabase(details, query, params = [], usePreparedSta
         if (usePreparedStatements) {
             [results] = await connection.execute(query, params); // Execute includes params on the MySQL server, checking for security and preventing SQL injection
         } else {
-            results = await connection.query(query, params); // However, execute doesn't work for all SQL syntax yet
+            [results] = await connection.query(query, params); // However, execute doesn't work for all SQL syntax yet
         }
 
         await connection.end();

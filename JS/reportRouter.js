@@ -224,6 +224,16 @@ reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (
         // Get the app's database
         const dbDetails = await getUserDatabaseDetails(db, creator_id);
 
+        if (table == "blacklist" || table == "warnlist") {
+            const selectQuery = `SELECT * FROM \`${app_name}_${table}\` WHERE id = ?;`;
+            const rows = await executeOnUserDatabase(dbDetails, selectQuery, [entryId]);
+            if (rows[0]) {
+                const entryToRemove = rows[0];
+                const deleteReportsQuery = `DELETE FROM \`${app_name}_reports\` WHERE type = ? AND reference_id = ?;`;
+                await executeOnUserDatabase(dbDetails, deleteReportsQuery, [entryToRemove.type, entryToRemove.reference_id]);
+            }
+        }
+
         // Delete the entry
         const deleteQuery = `DELETE FROM \`${app_name}_${table}\` WHERE id = ?;`;
         await executeOnUserDatabase(dbDetails, deleteQuery, [entryId]);
