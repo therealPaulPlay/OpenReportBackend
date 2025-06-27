@@ -56,9 +56,9 @@ thank you for subscribing to OpenReport!
 Product: ${productName}
 Purchase ID: ${purchaseId}
 
-Amount: $${(amountTotal / 100).toFixed(2)}
+Amount: $${((amountTotal || 0) / 100).toFixed(2)}
 
-If you have any questions regarding the purchase, please do not hesitate to reach out through the contact form on https://paulplay.studio. For tax information, please refer to https://paulplay.studio/imprint. 
+If you have any questions regarding the purchase, please do not hesitate to reach out through the contact form on https://paulplay.studio. For business information, please refer to https://paulplay.studio/imprint. 
 
 (This email was sent automatically, please do not reply directly).`
     };
@@ -110,9 +110,7 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             status: 'active',
         });
 
-        if (subscriptions.data.length > 0) {
-            return res.status(409).json({ error: "Please cancel your existing subscription first." });
-        }
+        if (subscriptions.data.length > 0) return res.status(409).json({ error: "Please cancel your existing subscription first." });
 
         // Create a new checkout session with automatic tax
         const session = await stripe.checkout.sessions.create({
@@ -121,7 +119,7 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             automatic_tax: {
                 enabled: true, // Enable automatic tax
             },
-            payment_method_types: ['card', 'paypal'], // Include PayPal as a payment method
+            payment_method_types: ['card', 'paypal'],
             line_items: [
                 {
                     price: prices.data[0].id,
@@ -154,9 +152,7 @@ subscriptionRouter.post('/create-portal-session', standardLimiter, authenticateT
             });
         });
 
-        if (!user.stripe_customer_id) {
-            return res.status(400).json({ error: 'No active subscription found.' });
-        }
+        if (!user.stripe_customer_id) return res.status(400).json({ error: 'No active subscription found.' });
 
         const portalSession = await stripe.billingPortal.sessions.create({
             customer: user.stripe_customer_id,
@@ -223,17 +219,17 @@ subscriptionRouter.post(
                     const subscription = event.data.object;
                     const user = await getUserByStripeCustomerId(subscription.customer);
 
-                    if (subscription.status === 'active') {
+                    if (subscription.status === 'active' && !subscription.pause_collection) {
                         // Get the product details and update limits
                         const product = await stripe.products.retrieve(subscription.items.data[0].price.product);
                         await updateUserLimits(
                             user.id,
-                            parseInt(product.metadata.report_limit),
-                            parseInt(product.metadata.moderator_limit),
-                            parseInt(product.metadata.subscription_tier)
+                            parseInt(product.metadata?.report_limit),
+                            parseInt(product.metadata?.moderator_limit),
+                            parseInt(product.metadata?.subscription_tier)
                         );
-                    } else if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
-                        // Reset to default limits
+                    } else {
+                        // Any other state (paused, canceled, unpaid, etc.) – take away subscription perks
                         await updateUserLimits(
                             user.id,
                             DEFAULT_REPORT_LIMIT,
