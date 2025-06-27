@@ -44,7 +44,7 @@ async function getUserByStripeCustomerId(stripeCustomerId) {
 }
 
 // Helper function to send confirmation email
-async function sendSubscriptionEmail(email, purchaseId, amountTotal, productName) {
+async function sendSubscriptionEmail(email, sessionId, amountTotal, productName) {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
@@ -54,7 +54,7 @@ async function sendSubscriptionEmail(email, purchaseId, amountTotal, productName
 thank you for subscribing to OpenReport!
 
 Product: ${productName}
-Purchase ID: ${purchaseId}
+Session ID: ${sessionId}
 
 Amount: $${((amountTotal || 0) / 100).toFixed(2)}
 
