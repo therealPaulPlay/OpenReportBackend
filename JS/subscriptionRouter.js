@@ -11,13 +11,7 @@ const { sendMail } = require('./sendEmails.js');
 const DEFAULT_REPORT_LIMIT = 2500;
 const DEFAULT_MODERATOR_LIMIT = 10;
 
-let stripe;
-
-try {
-    stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
-} catch (error) {
-    console.error("Stripe initialization failed:", error);
-}
+let stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
 
 // Helper function to update user limits
 async function updateUserLimits(userId, reportLimit, moderatorLimit, subscriptionTier) {
