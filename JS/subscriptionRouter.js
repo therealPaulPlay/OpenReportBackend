@@ -113,7 +113,7 @@ subscriptionRouter.post('/create-checkout-session', standardLimiter, authenticat
             automatic_tax: {
                 enabled: true, // Enable automatic tax
             },
-            payment_method_types: ['card', 'paypal'],
+            payment_method_types: ['card'],
             line_items: [
                 {
                     price: prices.data[0].id,
