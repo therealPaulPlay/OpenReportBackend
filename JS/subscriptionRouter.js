@@ -188,7 +188,10 @@ subscriptionRouter.post(
                 case 'checkout.session.completed': {
                     const session = event.data.object;
                     const subscription = await stripe.subscriptions.retrieve(session.subscription);
-                    const product = await stripe.products.retrieve(subscription.items.data[0].price.product);
+                    const price = subscription.items.data[0].price;
+                    if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services that share this Stripe acc
+
+                    const product = await stripe.products.retrieve(price.product);
 
                     // Get user from customer ID
                     const user = await getUserByStripeCustomerId(session.customer);
@@ -217,11 +220,14 @@ subscriptionRouter.post(
                 case 'customer.subscription.deleted':
                 case 'customer.subscription.updated': {
                     const subscription = event.data.object;
+                    const price = subscription.items.data[0].price;
+                    if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services
+
                     const user = await getUserByStripeCustomerId(subscription.customer);
 
                     if (subscription.status === 'active' && !subscription.pause_collection) {
                         // Get the product details and update limits
-                        const product = await stripe.products.retrieve(subscription.items.data[0].price.product);
+                        const product = await stripe.products.retrieve(price.product);
                         await updateUserLimits(
                             user.id,
                             parseInt(product.metadata?.report_limit),
