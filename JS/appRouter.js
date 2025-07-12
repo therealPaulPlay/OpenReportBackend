@@ -134,23 +134,13 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
     const db = getDB();
     const { id, appName, domains } = req.body;
 
-    if (!id || !appName || !domains || !Array.isArray(domains) || domains.length === 0) {
-        return res.status(400).json({ error: 'Id, app name, and domains are required.' });
-    }
+    if (!id || !appName || !domains || !Array.isArray(domains) || domains.length === 0) return res.status(400).json({ error: 'Id, app name, and domains are required.' });
 
     const validAppNameRegex = /^[a-z0-9_]+$/;
 
-    if (appName.includes(" ")) {
-        return res.status(400).json({ error: 'The app name cannot include whitespaces.' });
-    }
-
-    if (!validAppNameRegex.test(appName)) {
-        return res.status(400).json({ error: 'The app name can only contain lowercase letters, numbers and underscores.' });
-    }
-
-    if (domains.length > 30) {
-        return res.status(400).json({ error: 'A maximum of 30 domains is allowed.' });
-    }
+    if (appName.includes(" ")) return res.status(400).json({ error: 'The app name cannot include whitespaces.' });
+    if (!validAppNameRegex.test(appName)) return res.status(400).json({ error: 'The app name can only contain lowercase letters, numbers and underscores.' });
+    if (domains.length > 30) return res.status(400).json({ error: 'A maximum of 30 domains is allowed.' });
 
     try {
         // Check if app name already exists for the user
@@ -162,9 +152,7 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
             });
         });
 
-        if (existingApp) {
-            return res.status(409).json({ error: 'App with the same name already exists.' });
-        }
+        if (existingApp) return res.status(409).json({ error: 'App with the same name already exists.' });
 
         const apiKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character api key (for reports etc.)
         const secretKey = crypto.randomBytes(16).toString('hex'); // Generate 32-character api key (for api requests etc.)
@@ -194,20 +182,10 @@ appRouter.post('/create', appCreationLimiter, authenticateTokenWithId, async (re
         }
 
         // Get user's database connection details
-        const dbDetailsQuery = `
-            SELECT db_host, db_user_name, db_password, db_database, db_port
-            FROM users_databases WHERE user_id = ?
-        `;
-        const dbDetails = await new Promise((resolve, reject) => {
-            db.query(dbDetailsQuery, [id], (err, results) => {
-                if (err) return reject(err);
-                resolve(results[0]);
-            });
-        });
+        const dbDetails = await getUserDatabaseDetails(db, id);
 
-        if (!dbDetails) {
+        if (!dbDetails)
             return res.status(404).json({ error: 'Database connection details not found for user.' });
-        }
 
         // Create required tables in user's database
         const tableQueries = [

@@ -4,14 +4,14 @@ const { getDB } = require('./connectDB.js');
 const { authenticateTokenWithId } = require('./authUtils.js'); // Assuming it handles JWT validation
 const { testDatabaseConnection } = require('./userDatabase.js');
 const { standardLimiter } = require('./rateLimiting.js');
+const { encryptPassword } = require('./encryption.js');
 
 userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
     const { id, db_database, db_port, db_host, db_password, db_user_name } = req.body; // Use id from body
 
-    if (!id || !db_host || !db_port || !db_user_name || !db_password || !db_database) {
+    if (!id || !db_host || !db_port || !db_user_name || !db_password || !db_database)
         return res.status(400).json({ error: 'Id and all database fields are required.' });
-    }
 
     try {
         // Test the connection details
@@ -23,9 +23,10 @@ userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, asy
             db_port,
         });
 
-        if (!testResult.success) {
+        if (!testResult.success)
             return res.status(400).json({ error: `Database connection failed: ${testResult.error}` });
-        }
+
+        const encryptedPassword = encryptPassword(db_password); // Encrypt password before storing
 
         // Check if the user already has a database record
         const userDbQuery = 'SELECT id FROM users_databases WHERE user_id = ?';
@@ -39,17 +40,16 @@ userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, asy
         if (existingDb) {
             // Update existing database details
             const updateQuery = `
-                UPDATE users_databases 
+                UPDATE users_databases
                 SET db_host = ?, db_port = ?, db_user_name = ?, db_password = ?, db_database = ?
                 WHERE user_id = ?
             `;
             await new Promise((resolve, reject) => {
-                db.query(updateQuery, [db_host, db_port, db_user_name, db_password, db_database, id], (err, results) => {
+                db.query(updateQuery, [db_host, db_port, db_user_name, encryptedPassword, db_database, id], (err, results) => {
                     if (err) return reject(err);
                     resolve(results);
                 });
             });
-
             return res.json({ message: 'Database details updated successfully.' });
         } else {
             // Insert new database record
@@ -58,12 +58,11 @@ userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, asy
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
             await new Promise((resolve, reject) => {
-                db.query(insertQuery, [id, db_host, db_port, db_user_name, db_password, db_database], (err, results) => {
+                db.query(insertQuery, [id, db_host, db_port, db_user_name, encryptedPassword, db_database], (err, results) => {
                     if (err) return reject(err);
                     resolve(results);
                 });
             });
-
             return res.json({ message: 'Database details added successfully.' });
         }
     } catch (error) {

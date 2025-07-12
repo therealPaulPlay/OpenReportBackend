@@ -1,9 +1,9 @@
 const mysql = require('mysql2/promise');
+const { decryptPassword } = require('./encryption.js');
 
 // Test database connection
 async function testDatabaseConnection(details) {
     const { db_host: host, db_user_name: user, db_password: password, db_database: database, db_port: port } = details;
-
     try {
         const connection = await mysql.createConnection({ host, user, password, database, port });
         await connection.ping();
@@ -17,19 +17,17 @@ async function testDatabaseConnection(details) {
 
 // Execute query on user database and ensure the connection is closed
 async function executeOnUserDatabase(details, query, params = [], usePreparedStatements = true) {
-    const { db_host: host, db_user_name: user, db_password: password, db_database: database, db_port: port } = details;
+    const { db_host: host, db_user_name: user, db_password: encryptedPassword, db_database: database, db_port: port } = details;
+    const password = decryptPassword(encryptedPassword); // Decrypt password here
 
     try {
         const connection = await mysql.createConnection({ host, user, password, database, port });
-
         let results;
-
         if (usePreparedStatements) {
             [results] = await connection.execute(query, params); // Execute includes params on the MySQL server, checking for security and preventing SQL injection
         } else {
             [results] = await connection.query(query, params); // However, execute doesn't work for all SQL syntax yet
         }
-
         await connection.end();
         return results;
     } catch (error) {
@@ -38,18 +36,21 @@ async function executeOnUserDatabase(details, query, params = [], usePreparedSta
     }
 }
 
-// Function to fetch user database details
+// Function to fetch user database details with decrypted password
 async function getUserDatabaseDetails(db, userId) {
     try {
         const query = `
-        SELECT db_host, db_user_name, db_password, db_database, db_port
-        FROM users_databases
-        WHERE user_id = ?;
-    `;
+            SELECT db_host, db_user_name, db_password, db_database, db_port
+            FROM users_databases
+            WHERE user_id = ?;
+        `;
         return new Promise((resolve, reject) => {
             db.query(query, [userId], (err, results) => {
                 if (err) return reject(err);
-                resolve(results[0] || null);
+
+                const result = results[0] || null;
+                if (result) result.db_password = decryptPassword(result.db_password); // Decrypt password before returning
+                resolve(result);
             });
         });
     } catch (error) {
