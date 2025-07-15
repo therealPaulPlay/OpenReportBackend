@@ -181,9 +181,13 @@ subscriptionRouter.post(
             switch (event.type) {
                 case 'checkout.session.completed': {
                     const session = event.data.object;
+
+                    // Skip one-time payments (not meant for this project)
+                    if (!session.subscription) return res.sendStatus(200);
+
                     const subscription = await stripe.subscriptions.retrieve(session.subscription);
                     const price = subscription.items.data[0].price;
-                    if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services that share this Stripe acc
+                    if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services
 
                     const product = await stripe.products.retrieve(price.product);
 
@@ -229,7 +233,7 @@ subscriptionRouter.post(
                             parseInt(product.metadata?.subscription_tier)
                         );
                     } else {
-                        // Any other state (paused, canceled, unpaid, etc.) – take away subscription perks
+                        // Any other state (paused, canceled, unpaid, etc.) – take away subscription perks
                         await updateUserLimits(
                             user.id,
                             DEFAULT_REPORT_LIMIT,
