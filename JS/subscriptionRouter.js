@@ -182,38 +182,38 @@ subscriptionRouter.post(
                 case 'checkout.session.completed': {
                     const session = event.data.object;
 
-                    // Skip one-time payments (not meant for this project)
-                    if (!session.subscription) return res.sendStatus(200);
+                    // Only process subscription checkouts, ignore one-time payments
+                    if (session.mode === 'subscription') {
+                        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+                        const price = subscription.items.data[0].price;
+                        if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services
 
-                    const subscription = await stripe.subscriptions.retrieve(session.subscription);
-                    const price = subscription.items.data[0].price;
-                    if (!price.lookup_key?.startsWith('openreport_')) return res.sendStatus(200); // Ignore events from other services
+                        const product = await stripe.products.retrieve(price.product);
 
-                    const product = await stripe.products.retrieve(price.product);
+                        // Get user from customer ID
+                        const user = await getUserByStripeCustomerId(session.customer);
 
-                    // Get user from customer ID
-                    const user = await getUserByStripeCustomerId(session.customer);
+                        // Update user limits based on product metadata
+                        if (product.metadata.report_limit && product.metadata.moderator_limit) {
+                            await updateUserLimits(
+                                user.id,
+                                parseInt(product.metadata.report_limit),
+                                parseInt(product.metadata.moderator_limit),
+                                parseInt(product.metadata.subscription_tier)
+                            );
+                        }
 
-                    // Update user limits based on product metadata
-                    if (product.metadata.report_limit && product.metadata.moderator_limit) {
-                        await updateUserLimits(
-                            user.id,
-                            parseInt(product.metadata.report_limit),
-                            parseInt(product.metadata.moderator_limit),
-                            parseInt(product.metadata.subscription_tier)
+                        // Send confirmation email
+                        await sendSubscriptionEmail(
+                            user.email,
+                            session.id,
+                            session.amount_total,
+                            product.name
                         );
                     }
 
-                    // Send confirmation email
-                    await sendSubscriptionEmail(
-                        user.email,
-                        session.id,
-                        session.amount_total,
-                        product.name
-                    );
                     break;
                 }
-
                 case 'customer.subscription.created':
                 case 'customer.subscription.deleted':
                 case 'customer.subscription.updated': {
