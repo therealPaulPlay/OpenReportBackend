@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const requestIp = require('request-ip');
 const cors = require('cors');
-const xss = require('xss-clean');
 require('dotenv').config(); // Load environment variables
 
 // Router Imports
@@ -42,7 +41,6 @@ app.use((req, res, next) => {
     }
 });
 app.use(requestIp.mw());
-app.use(xss());
 
 // Database Connection
 connectDB();
