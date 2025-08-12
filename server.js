@@ -1,5 +1,4 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const requestIp = require('request-ip');
 const cors = require('cors');
 require('dotenv').config(); // Load environment variables
@@ -35,9 +34,9 @@ app.use(cors({
 // Middleware
 app.use((req, res, next) => {
     if (req.originalUrl === '/subscription/webhook') {
-        next(); // Skip body-parser for Stripe Webhook
+        next(); // Skip json body parsing for Stripe Webhook
     } else {
-        bodyParser.json()(req, res, next); // Use body-parser for all other routes
+        express.json()(req, res, next); // Parse request bodies as json
     }
 });
 app.use(requestIp.mw());
