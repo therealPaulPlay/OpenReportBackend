@@ -1,8 +1,8 @@
-const mysql = require('mysql2/promise');
-const { decryptPassword } = require('./encryption.js');
+import mysql from 'mysql2/promise';
+import { decryptPassword } from './encryption.js';
 
 // Test database connection
-async function testDatabaseConnection(details) {
+export async function testDatabaseConnection(details) {
     const { db_host: host, db_user_name: user, db_password: password, db_database: database, db_port: port } = details;
     try {
         const connection = await mysql.createConnection({ host, user, password, database, port });
@@ -16,7 +16,7 @@ async function testDatabaseConnection(details) {
 }
 
 // Execute query on user database and ensure the connection is closed
-async function executeOnUserDatabase(details, query, params = [], usePreparedStatements = true) {
+export async function executeOnUserDatabase(details, query, params = [], usePreparedStatements = true) {
     const { db_host: host, db_user_name: user, db_password: encryptedPassword, db_database: database, db_port: port } = details;
     const password = decryptPassword(encryptedPassword); // Decrypt password here
 
@@ -37,7 +37,7 @@ async function executeOnUserDatabase(details, query, params = [], usePreparedSta
 }
 
 // Function to fetch user database details with decrypted password
-async function getUserDatabaseDetails(db, userId) {
+export async function getUserDatabaseDetails(db, userId) {
     try {
         const query = `
             SELECT db_host, db_user_name, db_password, db_database, db_port
@@ -58,9 +58,3 @@ async function getUserDatabaseDetails(db, userId) {
         throw new Error(`Failed to obtain database credentials: ${error.message}`);
     }
 }
-
-module.exports = {
-    testDatabaseConnection,
-    executeOnUserDatabase,
-    getUserDatabaseDetails,
-};

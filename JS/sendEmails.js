@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 // Configure your email service
 let transporter = nodemailer.createTransport({
@@ -14,4 +14,4 @@ async function sendMail(options) {
     await transporter.sendMail(options);
 }
 
-module.exports = { sendMail };
+export { sendMail };

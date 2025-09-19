@@ -1,12 +1,12 @@
-const express = require('express');
-const { getDB } = require('./connectDB.js');
-const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
+import express from 'express';
+import { getDB } from './connectDB.js';
+import { executeOnUserDatabase, getUserDatabaseDetails } from './userDatabase.js';
+import { authenticateTokenWithId } from './authUtils.js';
+import { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } from './rateLimiting.js';
+import validateCaptcha from './captchaMiddleware.js';
+import { censor } from 'fast-profanity-filter';
+
 const reportRouter = express.Router();
-const { authenticateTokenWithId } = require('./authUtils.js');
-const { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } = require('./rateLimiting.js');
-const validateCaptcha = require('./captchaMiddleware.js');
-const filterProfanity = require('./filterProfanity.js');
-const isBannedIP = require('./filterBannedIPs.js');
 
 // Function to verify ownership or moderation and return app info
 async function verifyAppOwnership(db, appId, userId) {
@@ -53,11 +53,8 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
     if (notes && notes.length > 1000) return res.status(400).json({ error: "Please keep your notes short and concise." });
 
     // Apply profanity filtering to reason and notes
-    if (reason) reason = filterProfanity(reason);
-    if (notes) notes = filterProfanity(notes);
-
-    // Filter out blocked IP addresses (TOR, VPNs etc.)
-    if (isBannedIP(reporterIp)) return res.status(403).json({ message: 'Failed to submit report due to IP restrictions.' });
+    if (reason) reason = censor(reason);
+    if (notes) notes = censor(notes);
 
     try {
         const db = getDB();
@@ -515,4 +512,4 @@ reportRouter.put('/get-entry', highLimiter, async (req, res) => {
     }
 });
 
-module.exports = reportRouter;
+export default reportRouter;

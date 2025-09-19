@@ -1,11 +1,11 @@
-const express = require('express');
-const accountRouter = express.Router();
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import { standardLimiter, registerLimiter, loginLimiter } from "./rateLimiting.js";
+import { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId } from "./authUtils.js";
+import { getDB } from "./connectDB.js";
+import { sendMail } from './sendEmails.js';
 
-const jwt = require('jsonwebtoken');
-const { standardLimiter, registerLimiter, loginLimiter } = require("./rateLimiting.js");
-const { getEncodedPassword, isPasswordValid, createNewJwtToken, authenticateTokenWithId } = require("./authUtils.js");
-const { getDB } = require("./connectDB.js");
-const { sendMail } = require('./sendEmails.js');
+const accountRouter = express.Router();
 
 // Get user details
 accountRouter.get('/user/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -48,20 +48,12 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
 
     let { userName, email, password } = req.body; // Include these 3 properties in the request body
 
-    if (!userName || !email || !password) {
-        return res.status(400).json({ error: 'Username, email, and password are required.' });
-    }
-
+    if (!userName || !email || !password) return res.status(400).json({ error: 'Username, email, and password are required.' });
     userName = userName.trim(); // Remove whitespaces from username
     email = email.trim().toLowerCase(); // Remove whitespaces from email and lowercase
 
-    if (userName.length < 4 || email.length < 5) {
-        return res.status(400).json({ error: "Username or email are too short." });
-    }
-
-    if (userName.length > 50 || email.length > 100) {
-        return res.status(400).json({ error: "Username or email are too long." });
-    }
+    if (userName.length < 4 || email.length < 5)  return res.status(400).json({ error: "Username or email are too short." });
+    if (userName.length > 50 || email.length > 100)  return res.status(400).json({ error: "Username or email are too long." });
 
     try {
         // Check if email already exists
@@ -72,10 +64,7 @@ accountRouter.post('/register', registerLimiter, async (req, res) => {
                 resolve(results[0]);
             });
         });
-
-        if (existingEmailUser) {
-            return res.status(409).json({ error: 'Email is already in use.' });
-        }
+        if (existingEmailUser) return res.status(409).json({ error: 'Email is already in use.' });
 
         // Generate hashed password
         const hashedPassword = await getEncodedPassword(password);
@@ -117,16 +106,11 @@ accountRouter.post('/login', loginLimiter, async (req, res) => {
                 resolve(results[0]);
             });
         });
-
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid credentials.' });
-        }
+        if (!user) return res.status(400).json({ error: 'Invalid credentials.' });
 
         // Check password
         const isValidPassword = await isPasswordValid(password, user.password);
-        if (!isValidPassword) {
-            return res.status(400).json({ error: 'Invalid credentials.' });
-        }
+        if (!isValidPassword) return res.status(400).json({ error: 'Invalid credentials.' });
 
         // Generate JWT token
         const accessToken = createNewJwtToken({ email, id: user.id });
@@ -266,4 +250,4 @@ accountRouter.post('/reset-password', standardLimiter, async (req, res) => {
     }
 });
 
-module.exports = accountRouter;
+export default accountRouter;

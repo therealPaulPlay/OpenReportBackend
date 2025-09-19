@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import { getDB } from './connectDB.js';
+import { authenticateTokenWithId } from './authUtils.js';
+import { standardLimiter } from './rateLimiting.js';
+
 const moderatorRouter = express.Router();
-const { getDB } = require('./connectDB.js');
-const { authenticateTokenWithId } = require('./authUtils.js');
-const { standardLimiter } = require('./rateLimiting.js');
 
 // Get moderators of a specific app
 moderatorRouter.put('/moderators', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -153,10 +154,7 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
                 resolve(results[0]);
             });
         });
-
-        if (!app) {
-            return res.status(404).json({ error: 'App not found or you are not the owner.' });
-        }
+        if (!app) return res.status(404).json({ error: 'App not found or you are not the owner.' });
 
         // Get the user ID of the email provided
         const userQuery = 'SELECT id FROM users WHERE email = ?';
@@ -166,10 +164,7 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
                 resolve(results[0]);
             });
         });
-
-        if (!user) {
-            return res.status(404).json({ error: 'User with the provided email not found.' });
-        }
+        if (!user) return res.status(404).json({ error: 'User with the provided email not found.' });
 
         // Remove the user as a moderator
         const deleteModeratorQuery = 'DELETE FROM apps_moderators WHERE app_id = ? AND user_id = ?';
@@ -179,10 +174,7 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
                 resolve(results);
             });
         });
-
-        if (result.affectedRows === 0) {
-            return res.status(400).json({ error: 'User is not a moderator for this app.' });
-        }
+        if (result.affectedRows === 0) return res.status(400).json({ error: 'User is not a moderator for this app.' });
 
         // Decrement the moderator count for the app
         const updateModeratorCountQuery = 'UPDATE users_apps SET moderator_count = moderator_count - 1 WHERE id = ?';
@@ -200,4 +192,4 @@ moderatorRouter.delete('/remove', standardLimiter, authenticateTokenWithId, asyn
     }
 });
 
-module.exports = moderatorRouter;
+export default moderatorRouter;

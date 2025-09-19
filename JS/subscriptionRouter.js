@@ -1,17 +1,17 @@
-const express = require('express');
-const subscriptionRouter = express.Router();
+import express from 'express';
+import Stripe from 'stripe';
+import { standardLimiter } from "./rateLimiting.js";
+import { authenticateTokenWithId } from "./authUtils.js";
+import { getDB } from "./connectDB.js";
+import { sendMail } from './sendEmails.js';
 
-const stripeLib = require('stripe');
-const { standardLimiter } = require("./rateLimiting.js");
-const { authenticateTokenWithId } = require("./authUtils.js");
-const { getDB } = require("./connectDB.js");
-const { sendMail } = require('./sendEmails.js');
+const subscriptionRouter = express.Router();
 
 // Default limits
 const DEFAULT_REPORT_LIMIT = 2500;
 const DEFAULT_MODERATOR_LIMIT = 10;
 
-let stripe = stripeLib(process.env.STRIPE_SECRET_KEY);
+let stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Helper function to update user limits
 async function updateUserLimits(userId, reportLimit, moderatorLimit, subscriptionTier) {
@@ -253,4 +253,4 @@ subscriptionRouter.post(
     }
 );
 
-module.exports = subscriptionRouter;
+export default subscriptionRouter;

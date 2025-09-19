@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+import rateLimit from 'express-rate-limit';
 
 const loginLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -50,4 +50,4 @@ const manualEntryLimiter = rateLimit({
 });
 
 
-module.exports = { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter, manualEntryLimiter, highLimiter, submitLimiter };
+export { loginLimiter, registerLimiter, standardLimiter, appCreationLimiter, manualEntryLimiter, highLimiter, submitLimiter };

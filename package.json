@@ -2,6 +2,7 @@
   "name": "openreportbackend",
   "version": "1.0.0",
   "description": "Backend for OpenReport",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -31,6 +32,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
+    "fast-profanity-filter": "^0.0.5",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.12.0",
     "node-cron": "^3.0.3",

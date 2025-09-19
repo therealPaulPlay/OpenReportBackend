@@ -1,18 +1,18 @@
-const express = require('express');
-const requestIp = require('request-ip');
-const cors = require('cors');
-require('dotenv').config(); // Load environment variables
+import express from 'express';
+import requestIp from 'request-ip';
+import cors from 'cors';
+import 'dotenv/config'; // Load environment variables
 
 // Router Imports
-const accountRouter = require("./JS/accountRouter.js");
-const userDatabaseRouter = require("./JS/userDatabaseRouter.js");
-const appRouter = require("./JS/appRouter.js");
-const moderatorRouter = require("./JS/moderatorRouter.js");
-const reportRouter = require("./JS/reportRouter.js");
-const subscriptionRouter = require("./JS/subscriptionRouter.js");
+import accountRouter from "./JS/accountRouter.js";
+import userDatabaseRouter from "./JS/userDatabaseRouter.js";
+import appRouter from "./JS/appRouter.js";
+import moderatorRouter from "./JS/moderatorRouter.js";
+import reportRouter from "./JS/reportRouter.js";
+import subscriptionRouter from "./JS/subscriptionRouter.js";
 
 // Function imports
-const { connectDB } = require("./JS/connectDB.js");
+import { connectDB } from "./JS/connectDB.js";
 
 const app = express();
 

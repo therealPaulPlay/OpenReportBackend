@@ -1,11 +1,12 @@
-const express = require('express');
+import express from 'express';
+import { getDB } from './connectDB.js';
+import { authenticateTokenWithId } from './authUtils.js';
+import { executeOnUserDatabase, getUserDatabaseDetails } from './userDatabase.js';
+import { standardLimiter, appCreationLimiter } from './rateLimiting.js';
+import cron from 'node-cron';
+import crypto from 'crypto';
+
 const appRouter = express.Router();
-const { getDB } = require('./connectDB.js');
-const { authenticateTokenWithId } = require('./authUtils.js');
-const { executeOnUserDatabase, getUserDatabaseDetails } = require('./userDatabase.js');
-const { standardLimiter, appCreationLimiter } = require('./rateLimiting.js');
-const cron = require('node-cron');
-const crypto = require('crypto');
 
 // Endpoint to get apps by user id
 appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req, res) => {
@@ -651,4 +652,4 @@ cron.schedule('0 0 1 * *', async () => {
     }
 });
 
-module.exports = appRouter;
+export default appRouter;

@@ -1,10 +1,11 @@
-const express = require('express');
+import express from 'express';
+import { getDB } from './connectDB.js';
+import { authenticateTokenWithId } from './authUtils.js'; // Assuming it handles JWT validation
+import { testDatabaseConnection } from './userDatabase.js';
+import { standardLimiter } from './rateLimiting.js';
+import { encryptPassword } from './encryption.js';
+
 const userDatabaseRouter = express.Router();
-const { getDB } = require('./connectDB.js');
-const { authenticateTokenWithId } = require('./authUtils.js'); // Assuming it handles JWT validation
-const { testDatabaseConnection } = require('./userDatabase.js');
-const { standardLimiter } = require('./rateLimiting.js');
-const { encryptPassword } = require('./encryption.js');
 
 userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, async (req, res) => {
     const db = getDB();
@@ -71,4 +72,4 @@ userDatabaseRouter.post('/update', standardLimiter, authenticateTokenWithId, asy
     }
 });
 
-module.exports = userDatabaseRouter;
+export default userDatabaseRouter;

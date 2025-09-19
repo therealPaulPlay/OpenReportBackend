@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+import crypto from 'crypto';
 
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 const ALGORITHM = 'aes-256-gcm';
@@ -37,7 +37,7 @@ function decryptPassword(encryptedPassword) {
     return decrypted;
 }
 
-module.exports = {
+export {
     encryptPassword,
     decryptPassword
 };
