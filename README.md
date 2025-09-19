@@ -445,7 +445,9 @@ OpenReport sends webhook events as HTTP POST requests with this payload format:
 ```json
 {
   "type": "event-type",
-  "data": { /* event data */ }
+  "data": {
+    // Event data
+  }
 }
 ```
 
