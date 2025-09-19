@@ -19,14 +19,15 @@ appRouter.get('/apps/:id', standardLimiter, authenticateTokenWithId, async (req,
 
     try {
         const query = `
-            SELECT 
+            SELECT
                 ua.id AS app_id,
                 ua.app_name,
                 ua.warnlist_threshold,
                 ua.blacklist_threshold,
                 ua.monthly_report_count,
                 ua.api_key,
-                CASE 
+                ua.webhook_url,
+                CASE
                     WHEN ua.creator_id = ? THEN true
                     ELSE false
                 END AS owner
@@ -127,6 +128,39 @@ appRouter.put('/rotate-secret', standardLimiter, authenticateTokenWithId, async 
     } catch (error) {
         console.error('Error rotating app secret key:', error);
         res.status(500).json({ error: 'An error occurred while rotating the app secret key.' });
+    }
+});
+
+// Endpoint to set webhook configuration
+appRouter.put('/set-webhook', standardLimiter, authenticateTokenWithId, async (req, res) => {
+    const db = getDB();
+    const { id, appId, webhookUrl, webhookSecret } = req.body;
+
+    if (!id || !appId || !webhookUrl || !webhookSecret) {
+        return res.status(400).json({ error: 'Id, appId, webhookUrl, and webhookSecret are required.' });
+    }
+
+    try {
+        const updateQuery = `
+            UPDATE users_apps
+            SET webhook_url = ?, webhook_secret = ?
+            WHERE creator_id = ? AND id = ?
+        `;
+        const result = await new Promise((resolve, reject) => {
+            db.query(updateQuery, [webhookUrl, webhookSecret, id, appId], (err, results) => {
+                if (err) return reject(err);
+                resolve(results);
+            });
+        });
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'App not found or you do not have permission to modify it.' });
+        }
+
+        res.json({ message: 'Webhook configuration updated successfully.' });
+    } catch (error) {
+        console.error('Error setting webhook configuration:', error);
+        res.status(500).json({ error: 'An error occurred while setting webhook configuration.' });
     }
 });
 

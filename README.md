@@ -1,4 +1,4 @@
-# OpenReportBackend
+# OpenReport Backend
 API server for OpenReport. Prevent spam, cheating, fraud and more in social web environments with OpenReport.
 
 ## Routers
@@ -187,6 +187,18 @@ This router manages user-created applications.
     "appId": "number"
   }
  ```
+
+12. **PUT `/set-webhook`**
+- Configure webhook URL and secret for an app (app owner only).
+- **Body**:
+  ```json
+  {
+    "id": "number",
+    "appId": "number",
+    "webhookUrl": "string",
+    "webhookSecret": "string"
+  }
+  ```
 
 ---
 
@@ -396,6 +408,8 @@ The application uses several tables to store user, app, and moderation-related d
 | moderator_count      | INT          | NO       |            |                            |
 | api_key              | VARCHAR(255) | NO       |            |                            |
 | secret_key           | VARCHAR(255) | NO       |            |                            |
+| webhook_url          | VARCHAR(255) | YES      |            |                            |
+| webhook_secret       | VARCHAR(255) | YES      |            |                            |
 
 #### `users_apps_domains`
 | Column  | Type         | Nullable | Key        | Additional Info                           |
@@ -422,3 +436,51 @@ The application uses several tables to store user, app, and moderation-related d
 
 2. **Foreign Key Constraints**:
    - Ensure all foreign keys are set to `ON DELETE CASCADE` and `ON UPDATE CASCADE`.
+
+---
+
+## Webhook Integration
+
+OpenReport sends webhook events as HTTP POST requests with this payload format:
+```json
+{
+  "type": "event-type",
+  "data": { /* event data */ }
+}
+```
+
+### Webhook Verification
+
+Webhook requests are signed using HMAC-SHA256. The signature is in the `X-Webhook-Signature` header as `sha256=<signature>`.
+
+#### Example Verification (Node.js)
+
+```javascript
+import crypto from 'crypto';
+
+function verifyWebhook(payload, signature, secret) {
+    const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(JSON.stringify(payload))
+        .digest('hex');
+
+    const receivedSignature = signature.replace('sha256=', '');
+    return crypto.timingSafeEqual(
+        Buffer.from(expectedSignature, 'hex'),
+        Buffer.from(receivedSignature, 'hex')
+    );
+}
+
+app.post('/webhook', (req, res) => {
+    const signature = req.headers['x-webhook-signature'];
+    const webhookSecret = 'your-webhook-secret';
+
+    if (verifyWebhook(req.body, signature, webhookSecret)) {
+        // Process webhook event (assuming you have middleware for parsing the JSON body)
+        console.log('Event:', req.body.type, req.body.data);
+        res.sendStatus(200);
+    } else {
+        res.sendStatus(401);
+    }
+});
+```
