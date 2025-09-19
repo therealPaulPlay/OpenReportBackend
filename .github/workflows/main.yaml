@@ -29,17 +29,17 @@ jobs:
             git pull
 
             # Build Docker image
-            docker build -t openreportbackend .
+            docker build -t openreport-server .
 
-            # Check if container openreportbackend exists
-            if ! docker ps -a --format '{{.Names}}' | grep -q "^openreportbackend$"; then
-              echo "Container openreportbackend does not exist, creating..."
-              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreportbackend --env-file .env openreportbackend
+            # Check if container openreport-server exists
+            if ! docker ps -a --format '{{.Names}}' | grep -q "^openreport-server$"; then
+              echo "Container openreport-server does not exist, creating..."
+              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreport-server --env-file .env openreport-server
             else
-              echo "Container openreportbackend exists, stopping and removing..."
-              docker stop openreportbackend || true
-              docker rm openreportbackend || true
-              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreportbackend --env-file .env openreportbackend
+              echo "Container openreport-server exists, stopping and removing..."
+              docker stop openreport-server || true
+              docker rm openreport-server || true
+              docker run -d -p 3005:3005 --network host --restart unless-stopped --name openreport-server --env-file .env openreport-server
             fi
           EOF
 

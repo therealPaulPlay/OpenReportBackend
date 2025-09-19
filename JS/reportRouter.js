@@ -5,6 +5,7 @@ import { authenticateTokenWithId } from './authUtils.js';
 import { standardLimiter, manualEntryLimiter, highLimiter, submitLimiter } from './rateLimiting.js';
 import validateCaptcha from './captchaMiddleware.js';
 import { censor } from 'fast-profanity-filter';
+import { sendWebhook } from './sendWebhook.js';
 
 const reportRouter = express.Router();
 
@@ -158,6 +159,7 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
                 [referenceId.trim(), type.trim()]
             );
 
+            // If not already on warnlist, create entry
             if (warnlistCheck[0].count === 0) {
                 const warnlistInsertQuery = `
                     INSERT INTO \`${app.app_name}_warnlist\` (reference_id, type, reason, link, timestamp)
@@ -168,6 +170,7 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
                     warnlistInsertQuery,
                     [referenceId.trim(), type.trim(), reason || null, link || null]
                 );
+                sendWebhook(app.app_id, "warnlist-entry-added", { referenceId: referenceId.trim(), type: type.trim(), reason });
             }
         }
 
@@ -183,6 +186,7 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
                 [referenceId.trim(), type.trim()]
             );
 
+            // If not already on blacklist, create entry
             if (blacklistCheck[0].count === 0) {
                 const blacklistInsertQuery = `
                     INSERT INTO \`${app.app_name}_blacklist\` (reference_id, type, reason, link, timestamp)
@@ -193,6 +197,7 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
                     blacklistInsertQuery,
                     [referenceId.trim(), type.trim(), reason || null, link || null]
                 );
+                sendWebhook(app.app_id, "blacklist-entry-added", { referenceId: referenceId.trim(), type: type.trim(), reason });
             }
         }
 
@@ -285,6 +290,7 @@ reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, 
             VALUES (?, ?, ?, ?, ?);
         `;
         await executeOnUserDatabase(dbDetails, insertQuery, [referenceId, type, reason || null, link || null, userEmail]);
+        sendWebhook(app.app_id, `${table}-entry-added-manually`, { referenceId, type, reason });
 
         res.status(201).json({ message: `Entry added to ${table} successfully.` });
     } catch (error) {
