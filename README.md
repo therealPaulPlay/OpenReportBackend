@@ -186,9 +186,9 @@ This router manages user-created applications.
     "id": "number",
     "appId": "number"
   }
- ```
+  ```
 
-12. **PUT `/set-webhook`**
+12. ****PUT **`/set-webhook`******
 - Configure webhook URL and secret for an app (app owner only).
 - **Body**:
   ```json
