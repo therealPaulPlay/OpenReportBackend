@@ -9,7 +9,8 @@ async function sendWebhook(appId, type, data) {
         const [results] = await db.promise().query(query, [appId]);
         const result = results[0];
 
-        if (!result || !result.webhook_url) {
+        // If url or secret are not set, skip
+        if (!result || !result.webhook_url || !result.webhook_secret) {
             return;
         }
 

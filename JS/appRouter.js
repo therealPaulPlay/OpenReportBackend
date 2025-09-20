@@ -136,9 +136,11 @@ appRouter.put('/set-webhook', standardLimiter, authenticateTokenWithId, async (r
     const db = getDB();
     const { id, appId, webhookUrl, webhookSecret } = req.body;
 
-    if (!id || !appId || !webhookUrl || !webhookSecret) {
-        return res.status(400).json({ error: 'Id, appId, webhookUrl, and webhookSecret are required.' });
-    }
+    if (!id || !appId) return res.status(400).json({ error: 'User ID and app ID are required.' });
+
+    // Convert undefined/empty strings to null
+    const cleanWebhookUrl = webhookUrl || null;
+    const cleanWebhookSecret = webhookSecret || null;
 
     try {
         const updateQuery = `
@@ -147,7 +149,7 @@ appRouter.put('/set-webhook', standardLimiter, authenticateTokenWithId, async (r
             WHERE creator_id = ? AND id = ?
         `;
         const result = await new Promise((resolve, reject) => {
-            db.query(updateQuery, [webhookUrl, webhookSecret, id, appId], (err, results) => {
+            db.query(updateQuery, [cleanWebhookUrl, cleanWebhookSecret, id, appId], (err, results) => {
                 if (err) return reject(err);
                 resolve(results);
             });
