@@ -159,7 +159,7 @@ This router manages user-created applications.
 
   9. ****POST **`/enable-auto-cleanup`******
 - Enables automatic cleanup of old reports based on specified days.
-- ****Body****:
+- **Body**:
   ```json
   {
     "id": "number",
@@ -170,7 +170,7 @@ This router manages user-created applications.
 
 10. ****DELETE **`/disable-auto-cleanup`******
 - Disables automatic cleanup of reports.
-- ****Body****:
+- **Body**:
   ```json
   {
     "id": "number",
@@ -180,7 +180,7 @@ This router manages user-created applications.
 
 11. ****PUT **`/get-auto-cleanup`******
 - Returns the current auto-cleanup configuration.
-- ****Body****:
+- **Body**:
   ```json
   {
     "id": "number",
@@ -335,13 +335,11 @@ This router handles reporting functionalities for apps, including submission, de
 
 ---
 
-**### `/subscription` Router**
+### `/subscription` Router
 
 This router handles subscription management through Stripe.
 
 #### Endpoints:
-
-**#### Endpoints:**
 1. **POST `/create-checkout-session`**
 - **Body**:
 ```json
