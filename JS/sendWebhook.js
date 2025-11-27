@@ -10,9 +10,7 @@ async function sendWebhook(appId, type, data) {
         const result = results[0];
 
         // If url or secret are not set, skip
-        if (!result || !result.webhook_url || !result.webhook_secret) {
-            return;
-        }
+        if (!result || !result.webhook_url || !result.webhook_secret) return;
 
         const payload = {
             type,
@@ -28,14 +26,13 @@ async function sendWebhook(appId, type, data) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Webhook-Signature': `sha256=${signature}`
+                'X-Webhook-Signature': `sha256=${signature}`,
+                'User-Agent': 'OpenReport-Webhook'
             },
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            console.warn(`Webhook delivery failed for app ${appId}: ${response.status} ${response.statusText}`);
-        }
+        if (!response.ok) console.warn(`Webhook delivery failed for app ${appId}: ${response.status} ${response.statusText}`);
     } catch (error) {
         console.warn(`Webhook delivery error for app ${appId}:`, error.message);
     }
