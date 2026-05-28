@@ -52,6 +52,7 @@ reportRouter.post('/submit', submitLimiter, validateCaptcha, async (req, res) =>
 
     if (!key || !referenceId || !type) return res.status(400).json({ error: 'Key, referenceId, and type are required.' });
     if (notes && notes.length > 1000) return res.status(400).json({ error: "Please keep your notes short and concise." });
+    if (reason && reason.length > 75) return res.status(400).json({ error: 'Reason should not exceed 75 characters.' });
 
     // Apply profanity filtering to reason and notes
     if (reason) reason = censor(reason);
@@ -250,7 +251,9 @@ reportRouter.delete('/delete', standardLimiter, authenticateTokenWithId, async (
 // Add to Blacklist or Warnlist
 reportRouter.post('/add-manually', manualEntryLimiter, authenticateTokenWithId, async (req, res) => {
     const { id, appId, table, referenceId, type, reason, link } = req.body;
+
     if (!["blacklist", "warnlist"].includes(table) || referenceId == null || appId == null) return res.status(400).json({ error: "Table, appId and referenceId are required." });
+    if (reason && reason.length > 75) return res.status(400).json({ error: 'Reason should not exceed 75 characters.' });
 
     try {
         const db = getDB();
